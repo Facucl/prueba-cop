@@ -1,0 +1,343 @@
+================================================================================
+RUNBOOK — Despliegue del bot de notificaciones de despliegues a Teams
+================================================================================
+Última actualización: 2026-04-21
+
+================================================================================
+ESTADO ACTUAL (2026-04-21, fin de jornada)
+================================================================================
+
+HECHO:
+  [x] Imagen built + pusheada: registry-sip.cba.gov.ar:5000/deploy-notify-bot:v1.0.0
+  [x] Secret deploy-notify-bot-teams creado en ws-copernico-suite-back-cop-pipeline
+  [x] Role + RoleBinding (manual) en openshift-gitops — SA tekton-build puede listar Applications
+  [x] 6-notify-task.yaml agregado al chart node-pipeline (real)
+  [x] finally agregado a pipeline.yaml del chart node-pipeline (real)
+  [x] Commit + push del chart → Argo sync ATTEMPTED
+
+BLOQUEADO POR:
+  [!] AppProject rcb-gitops-projects-ws-copernico-suite-back-cop-pipeline
+      no permite kind Task en namespaceResourceWhitelist. Error de Argo:
+      "Resource tekton.dev:Task is not permitted in project ..."
+
+================================================================================
+PENDIENTE — POR DÓNDE SEGUIR MAÑANA
+================================================================================
+
+OBJETIVO DEL USUARIO: que la solución sea "automagic" para TODOS los ns *-pipeline,
+no per-servicio. Por eso los ítems apuntan a templates centrales, no a parches.
+
+1) [BLOQUEADOR] Agregar kind Task a la whitelist del template de AppProject en
+   el repo que gestiona rcb-gitops-core (un commit → cubre todos los servicios).
+
+   Paso a) Ubicar repo + path:
+     oc get application rcb-gitops-core -n openshift-gitops -o jsonpath='{.spec.source.repoURL}{"\n"}{.spec.source.path}{"\n"}'
+
+   Paso b) En el archivo template del AppProject (algo tipo templates/appproject.yaml),
+   en spec.namespaceResourceWhitelist agregar:
+     - group: '*'
+       kind: Task
+
+   Paso c) Commit + push + sync de rcb-gitops-core.
+
+   Paso d) Verificar en 3 AppProjects distintos:
+     oc get appproject rcb-gitops-projects-<servicio>-pipeline -n openshift-gitops -o jsonpath='{.spec.namespaceResourceWhitelist}' | grep -o 'kind:Task'
+
+2) Retry del sync de ws-copernico-suite-back-cop-pipeline en Argo → debe quedar
+   Synced/Healthy. Verificar:
+     oc get pipeline ws-copernico-suite-back-cop-pipeline -n ws-copernico-suite-back-cop-pipeline -o jsonpath='{.spec.finally[*].name}' ; echo
+     oc get task -n ws-copernico-suite-back-cop-pipeline | grep notify
+
+3) Estrategia escalable para el Secret del webhook Teams:
+     oc get deploy -A | grep -iE "reflector|replicator"
+   - Si está → crear Secret en ns central con annotations reflector.* para
+     auto-replicar a todos los ns .*-pipeline.
+   - Si no está → instalar emberstack/reflector (helm chart) o decidir
+     seguir creando a mano (no escala).
+
+4) Versionar el Role deploy-notify-bot-argo-reader en el repo de rcb-gitops-core
+   (hoy está creado con oc create role — si se borra el cluster, se pierde).
+
+5) Agregar template nuevo al chart node-pipeline:
+     charts/node-pipeline/templates/7-argo-reader-rolebinding.yaml
+   Renderiza un RoleBinding en openshift-gitops por cada release, apuntando al
+   SA tekton-build del ns de ese release. Con esto, cada pipeline nuevo que use
+   node-pipeline se auto-autoriza sin tener que correr oc create rolebinding.
+
+6) Prueba end-to-end: crear tag con subject
+     "Mantenimiento: Fixes de seguridad y reparación automática de dependencias."
+   y body "deploy: desa test". Push → EventListener dispara PipelineRun → notify-deploy
+   corre en finally → mensaje en canal COPÉRNICO › DEPLOYS (BOT).
+
+7) Pequeñas deudas:
+   - Pushear tag :latest al registry (o pinear :v1.0.0 en el chart).
+   - Decidir si se extiende el bot para envs feature-* (hay Applications
+     -feature-preprod en Argo que el parser actual no matchea).
+
+
+Servicio de referencia: ws-copernico-suite-back-cop
+Namespace del pipeline: ws-copernico-suite-back-cop-pipeline
+AppProject Argo: rcb-gitops-projects-ws-copernico-suite-back-cop-pipeline
+Parent Argo App que gestiona los AppProjects: rcb-gitops-core
+
+Este archivo captura todos los pasos aplicados para poner el bot en
+producción. Si algo se rompe, seguir los pasos en orden desde cero.
+
+================================================================================
+0. REQUISITOS PREVIOS
+================================================================================
+- Acceso al cluster OpenShift con `oc login` (user con permisos para crear
+  secrets, role, rolebinding, y editar AppProjects en openshift-gitops).
+- Acceso de push al registry interno: registry-sip.cba.gov.ar:5000
+- URL del webhook de Teams rotada (el original fue expuesto y no debe
+  reusarse).
+- Chart `node-pipeline` versionado en: git.rentasweb.gob.ar/DevOps/helm-charts
+- Repo con el código del bot: github.com/Facucl/copernico-bot
+
+================================================================================
+1. BUILD + PUSH DE LA IMAGEN DEL BOT
+================================================================================
+Desde el directorio raíz del código del bot (el que tiene `Dockerfile`):
+
+    docker build -t deploy-notify-bot:v1.0.0 .
+
+Smoke test (debe fallar con el log esperado — confirma que el binario arranca):
+
+    docker run --rm deploy-notify-bot:v1.0.0
+
+Salida esperada:
+    config: missing required env vars: SERVICE, TAG, PIPELINE_STATUS, TEAMS_WEBHOOK_URL
+
+Push al registry interno (requiere estar en la VM o red que alcanza SIP):
+
+    docker tag deploy-notify-bot:v1.0.0 registry-sip.cba.gov.ar:5000/deploy-notify-bot:v1.0.0
+    docker push registry-sip.cba.gov.ar:5000/deploy-notify-bot:v1.0.0
+
+(Opcional) tag :latest para que coincida con el default del Task:
+
+    docker tag deploy-notify-bot:v1.0.0 registry-sip.cba.gov.ar:5000/deploy-notify-bot:latest
+    docker push registry-sip.cba.gov.ar:5000/deploy-notify-bot:latest
+
+================================================================================
+2. SECRET DEL WEBHOOK DE TEAMS
+================================================================================
+Se crea UNA VEZ por cada namespace de pipeline que deba notificar.
+Nombre y key DEBEN ser exactos (el Task los busca por nombre):
+
+  - Nombre del Secret:  deploy-notify-bot-teams
+  - Key:                webhook-url
+  - Env var que ve el bot (la setea el Task): TEAMS_WEBHOOK_URL
+
+Comando (reemplazar la URL por la rotada):
+
+    oc create secret generic deploy-notify-bot-teams --from-literal=webhook-url="https://webhookbot.c-toss.com/api/bot/webhooks/<GUID>" -n ws-copernico-suite-back-cop-pipeline
+
+Verificación (imprime los primeros 50 chars):
+
+    oc get secret deploy-notify-bot-teams -n ws-copernico-suite-back-cop-pipeline -o jsonpath='{.data.webhook-url}' | base64 -d | head -c 50 ; echo
+
+Rollback:
+
+    oc delete secret deploy-notify-bot-teams -n ws-copernico-suite-back-cop-pipeline
+
+================================================================================
+3. RBAC PARA LEER APPLICATIONS DE ARGOCD
+================================================================================
+Se crea UNA VEZ por cluster. El Role vive en `openshift-gitops` (donde están
+las Applications); el RoleBinding referencia al SA `tekton-build` en el
+namespace del pipeline.
+
+Comandos (uno por línea, imperativos — equivalentes al YAML de bot/deploy/rbac.yaml):
+
+    oc create role deploy-notify-bot-argo-reader --verb=get,list,watch --resource=applications.argoproj.io -n openshift-gitops
+
+    oc create rolebinding deploy-notify-bot-argo-reader --role=deploy-notify-bot-argo-reader --serviceaccount=ws-copernico-suite-back-cop-pipeline:tekton-build -n openshift-gitops
+
+Verificación (debe decir "yes"):
+
+    oc auth can-i list applications.argoproj.io --as=system:serviceaccount:ws-copernico-suite-back-cop-pipeline:tekton-build -n openshift-gitops
+
+Rollback:
+
+    oc delete role/deploy-notify-bot-argo-reader rolebinding/deploy-notify-bot-argo-reader -n openshift-gitops --ignore-not-found
+
+IMPORTANTE: Si se agregan nuevos namespaces *-pipeline que deban notificar,
+hay que crear OTRO RoleBinding con el SA de ese ns apuntando al MISMO Role.
+
+================================================================================
+4. CAMBIOS EN EL CHART node-pipeline
+================================================================================
+Repo: git.rentasweb.gob.ar/DevOps/helm-charts
+Path: charts/node-pipeline/templates/
+
+DOS CAMBIOS:
+
+  4.a) Archivo NUEVO: charts/node-pipeline/templates/6-notify-task.yaml
+       Contenido: copiar íntegramente desde
+         prueba-cop/charts/node-pipeline/templates/6-notify-task.yaml
+       (o desde el repo github.com/Facucl/copernico-bot en bot/deploy/notify-task.yaml
+        — ojo: ese último NO tiene el Go template {{ .Release.Name }}).
+
+  4.b) Archivo EDITADO: charts/node-pipeline/templates/2-pipeline.yaml
+       (o pipeline.yaml según el nombre en el repo real)
+       Agregar al FINAL del archivo, después del último task (trivy-scan-repo):
+
+         ###############
+         # FINALLY — notificar a Teams el resultado del despliegue
+         ###############
+         finally:
+           - name: notify-deploy
+             taskRef:
+               name: {{ .Release.Name }}-notify-deploy
+             params:
+               - name: service
+                 value: $(params.ecr-repository)
+               - name: release
+                 value: $(params.tag-name)
+               - name: envs
+                 value: $(params.deploy-to)
+               - name: pipeline-status
+                 value: $(tasks.status)
+             workspaces:
+               - name: source
+                 workspace: source-dir
+
+       Indentación crítica:
+         - `finally:` a 2 espacios (misma columna que `tasks:`)
+         - items a 4 espacios
+         - sub-keys a 6 espacios
+
+Verificación local antes de commitear (desde la raíz del chart):
+
+    helm template test . | grep -A 15 "^  finally:"
+
+Debe mostrar el bloque finally renderizado.
+
+Commit + push a la rama master. Argo syncea el `-pipeline` project
+automáticamente.
+
+================================================================================
+5. AMPLIAR LA WHITELIST DEL AppProject — permitir tekton.dev/Task
+================================================================================
+PROBLEMA: por defecto el AppProject rcb-gitops-projects-*-pipeline permite
+Pipeline, EventListener, TriggerTemplate, etc. pero NO Task. El sync falla con:
+
+    Resource tekton.dev:Task is not permitted in project
+    rcb-gitops-projects-ws-copernico-suite-back-cop-pipeline.
+
+SOLUCIÓN TEMPORAL (patch en caliente — se sobrescribe en el próximo sync de
+rcb-gitops-core si tiene self-heal):
+
+    oc patch appproject rcb-gitops-projects-ws-copernico-suite-back-cop-pipeline -n openshift-gitops --type=json -p='[{"op":"add","path":"/spec/namespaceResourceWhitelist/-","value":{"group":"*","kind":"Task"}}]'
+
+SOLUCIÓN PERMANENTE (editar en Git):
+
+  1) Encontrar dónde vive la definición del AppProject:
+
+       oc get application rcb-gitops-core -n openshift-gitops -o jsonpath='{.spec.source.repoURL}{"\n"}{.spec.source.path}{"\n"}'
+
+  2) En ese repo/path, localizar el manifiesto del AppProject (busca
+     `name: rcb-gitops-projects-ws-copernico-suite-back-cop-pipeline` o un
+     template genérico de AppProject que se instancia por servicio).
+
+  3) En `spec.namespaceResourceWhitelist` agregar:
+
+         - group: '*'
+           kind: Task
+
+     (Usar el mismo formato que los demás items del array.)
+
+  4) Si la whitelist está templateada (un AppProject por servicio generado
+     desde un único template), el cambio impacta a TODOS los pipelines —
+     deseable, para que el bot funcione en cualquier servicio que use
+     node-pipeline.
+
+  5) Commit + push. Argo reconcilia el AppProject. Task queda permitido para
+     siempre.
+
+Verificación:
+
+    oc get appproject rcb-gitops-projects-ws-copernico-suite-back-cop-pipeline -n openshift-gitops -o jsonpath='{.spec.namespaceResourceWhitelist}' | grep -o 'kind:Task'
+
+Debe devolver `kind:Task`.
+
+Rollback (quitar solo el Task):
+
+    oc patch appproject rcb-gitops-projects-ws-copernico-suite-back-cop-pipeline -n openshift-gitops --type=json -p='[{"op":"test","path":"/spec/namespaceResourceWhitelist/-1","value":{"group":"*","kind":"Task"}},{"op":"remove","path":"/spec/namespaceResourceWhitelist/-1"}]'
+
+(Solo funciona si `Task` quedó como último item del array.)
+
+================================================================================
+6. VERIFICACIÓN END-TO-END
+================================================================================
+Después de que Argo sincroniza los cambios del chart:
+
+6.a) La Pipeline tiene el finally:
+    oc get pipeline ws-copernico-suite-back-cop-pipeline -n ws-copernico-suite-back-cop-pipeline -o jsonpath='{.spec.finally[*].name}' ; echo
+    Esperado: notify-deploy
+
+6.b) La Task existe:
+    oc get task -n ws-copernico-suite-back-cop-pipeline | grep notify
+    Esperado: ws-copernico-suite-back-cop-pipeline-notify-deploy
+
+6.c) Prueba real (dispara el pipeline con un tag):
+    El commit del tag debe tener EXACTAMENTE este subject:
+      "Mantenimiento: Fixes de seguridad y reparación automática de dependencias."
+    (con tildes, mayúscula en "M", punto final)
+
+    El body del tag debe contener una línea como:
+      deploy: desa test
+
+    (listar ambientes separados por espacio)
+
+6.d) Observar el PipelineRun y el pod del bot:
+    oc get pipelinerun -n ws-copernico-suite-back-cop-pipeline --sort-by=.metadata.creationTimestamp | tail -3
+    oc logs -n ws-copernico-suite-back-cop-pipeline -l tekton.dev/pipelineTask=notify-deploy --tail=100
+
+6.e) Confirmar que llegó el mensaje al canal de Teams
+    "COPÉRNICO › DEPLOYS (BOT)".
+
+================================================================================
+7. TROUBLESHOOTING
+================================================================================
+
+SÍNTOMA: El pipeline termina OK pero no llega mensaje a Teams.
+CAUSA PROBABLE: el commit no matchea la marca de seguridad exacta. El bot
+filtra silenciosamente y sale con exit 0.
+VERIFICAR: `oc logs` del pod notify-deploy — tiene que decir
+"skipping: commit message does not match security fix marker" o similar.
+
+SÍNTOMA: Pod del bot en CreateContainerConfigError.
+CAUSA: el Secret deploy-notify-bot-teams no existe en el ns del pipeline.
+FIX: reaplicar el paso 2.
+
+SÍNTOMA: Logs del bot con "forbidden" contra applications.argoproj.io.
+CAUSA: RBAC no aplicado o apunta a un ns distinto.
+FIX: paso 3 y verificar subject del RoleBinding.
+
+SÍNTOMA: Argo UI sigue diciendo "Task is not permitted".
+CAUSA: patch del paso 5 se revirtió (rcb-gitops-core re-sincronizó).
+FIX: aplicar la solución PERMANENTE del paso 5 en Git.
+
+SÍNTOMA: El bot notifica "pipeline OK pero no pude verificar Argo".
+CAUSA: naming del servicio no matchea el patrón {service}-{env} en Argo
+Applications.
+VERIFICAR: `oc get applications.argoproj.io -n openshift-gitops | grep <servicio>`
+Si los nombres no siguen el patrón, ajustar el param `argo-app-pattern`
+del Task (default: "{service}-{env}").
+
+================================================================================
+8. CHECKLIST RÁPIDO (COPIAR-PEGAR)
+================================================================================
+[ ] docker build + push de la imagen a registry-sip
+[ ] Secret deploy-notify-bot-teams creado en el ns del pipeline
+[ ] Role + RoleBinding aplicados en openshift-gitops
+[ ] `oc auth can-i ...` → yes
+[ ] 6-notify-task.yaml agregado al chart
+[ ] bloque finally agregado al pipeline.yaml del chart
+[ ] commit + push al repo helm-charts
+[ ] AppProject actualizado con kind: Task en whitelist
+[ ] Argo sync del -pipeline project → Synced
+[ ] Pipeline tiene `.spec.finally[*].name == notify-deploy`
+[ ] Task `*-notify-deploy` existe en el ns
+[ ] Tag de prueba disparado → mensaje llega al canal de Teams
