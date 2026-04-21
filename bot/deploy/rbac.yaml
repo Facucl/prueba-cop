@@ -1,0 +1,51 @@
+# RBAC para que el PipelineRun pueda leer las Applications de ArgoCD en
+# `openshift-gitops`. El Role vive en `openshift-gitops` (donde están los CRs)
+# y el RoleBinding referencia al ServiceAccount del pipeline en su propio ns.
+#
+# Confirmado en charts/node-pipeline/templates/3-triggertemplate.yaml:27 y en
+# la Application -pipeline: SA=tekton-build, ns=ws-copernico-suite-back-cop-pipeline.
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: deploy-notify-bot-argo-reader
+  namespace: openshift-gitops
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: deploy-notify-bot-argo-reader
+  namespace: openshift-gitops
+subjects:
+  - kind: ServiceAccount
+    name: tekton-build
+    namespace: ws-copernico-suite-back-cop-pipeline
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: deploy-notify-bot-argo-reader
+
+# ---------------------------------------------------------------------------
+# SECRET DEL WEBHOOK DE TEAMS (se crea por fuera, NO va versionado)
+# ---------------------------------------------------------------------------
+#
+# El Task notify-deploy referencia:
+#     secretKeyRef:
+#       name: deploy-notify-bot-teams
+#       key: webhook-url
+#
+# Crear el Secret en el namespace del pipeline después de rotar la URL:
+#
+#   oc create secret generic deploy-notify-bot-teams \
+#     --from-literal=webhook-url="https://webhookbot.c-toss.com/api/bot/webhooks/<GUID>" \
+#     -n ws-copernico-suite-back-cop-pipeline
+#
+# Si el chart node-pipeline se reusa en otros namespaces (otros servicios),
+# el mismo Secret debe existir en cada uno — o replicarse con Reflector desde
+# un namespace central. No commitear la URL en texto plano.

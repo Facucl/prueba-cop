@@ -1,0 +1,35 @@
+# NOTA: este archivo es documentación — el `finally` efectivo vive en el chart
+# compartido `charts/node-pipeline/templates/2-pipeline.yaml`.
+# Acá queda una copia de referencia para probar el flow contra un Pipeline
+# standalone (sin Helm), o para entender qué está en producción.
+#
+# Dentro de `spec:` del Pipeline, al mismo nivel que `tasks:`:
+#
+#   finally:
+#     - name: notify-deploy
+#       taskRef:
+#         name: <release-name>-notify-deploy   # si venís del chart node-pipeline
+#         # name: notify-deploy                # si aplicaste deploy/notify-task.yaml a mano
+#       params:
+#         - name: service
+#           value: $(params.ecr-repository)
+#         - name: release
+#           value: $(params.tag-name)
+#         - name: envs
+#           value: $(params.deploy-to)
+#         - name: pipeline-status
+#           value: $(tasks.status)
+#       workspaces:
+#         - name: source
+#           workspace: source-dir
+#
+# Notas:
+# - `finally` corre SIEMPRE, falle o no el pipeline. El bot detecta el escenario
+#   5 ("Fallo en pipelines") porque `$(tasks.status)` será `Failed`.
+# - Si el commit no contiene la marca de seguridad
+#   ("Mantenimiento: Fixes de seguridad y reparación automática de dependencias."),
+#   el bot sale silenciosamente sin notificar (filtro aplicado adentro del bot).
+# - El param `branch` no se pasa desde acá: el Task tiene default `master` y eso
+#   es lo que queremos por ahora. Cuando se implemente la deducción de rama,
+#   el step `read-commit-message` del Task también escribirá `branch.txt` y el
+#   bot leerá de ahí.
