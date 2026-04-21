@@ -1,0 +1,16 @@
+apiVersion: v2
+name: filebeat-logstash-openshift
+version: 0.0.1
+Appversion: latest
+description: >
+    This Chart is to deploy filebeat and logstash based on Official repositories.
+keywords:
+  - filebeat
+  - logstash
+dependencies:
+- name: filebeat
+  version: 8.4.1
+  repository: "https://helm.elastic.co"
+- name: logstash
+  version: 8.4.1
+  repository: "https://helm.elastic.co"

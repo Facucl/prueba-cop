@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/desarrollo-cba/ImpuestosFront
+  bucket_name: fe-impuestos
+  context: fe-impuestosFront

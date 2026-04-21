@@ -1,0 +1,21 @@
+{{- if .Values.service.enabled -}} 
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.name | default "wsrest-svc-default" }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.global.projectName | default "wsrest-svc-default" }}
+    {{- if .Values.service.labels }}
+    {{- toYaml .Values.service.labels | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    app: {{ .Values.global.projectName | default "wsrest-svc-default" }}-app
+  ports:
+    - protocol: TCP
+      port: {{ .Values.service.port | default 80 }}
+      targetPort: {{ .Values.service.targetPort | default 8080 }}
+  type: {{ .Values.service.type | default "ClusterIP" }}
+{{- end }}
+

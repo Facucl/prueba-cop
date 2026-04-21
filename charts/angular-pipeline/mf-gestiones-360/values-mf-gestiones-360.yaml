@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/RENTUP/frontend/micro/mf-gestiones-360.git
+  bucket_name: fe-mf-gestiones-360
+  context: mf-gestiones-360

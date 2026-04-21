@@ -1,0 +1,237 @@
+global:
+  clusterName: "preprod"
+
+auth:
+  deploy_web:
+    applications:
+      - rentas
+      - sellosrentas
+      - wsrestant
+      - wsrestauditoria
+      - wsrestautomotores
+      - wsrestcalculador
+      - wsrestcomposicionmail
+      - wsrestdeudaant
+      - wsrestdeudar2
+      - wsrestembarcaciones
+      - wsrestimpuestos
+      - wsrestinformacionusuariorentas
+      - wsrestingresosbrutos
+      - wsrestinmuebles
+      - wsrestpagos
+      - wsrestpsrm
+      - wsrestresoluciones
+      - wsrestsujetos
+      - wsresttipas
+      - wsresttramites
+      - wsresttributario
+      - wsrestvalidadorexterno
+      - wsrestkepler
+      - kontaktar
+      - wsrestpagos360
+      - wsrestcontribuyentesespeciales
+      - wsrestabmtramites
+      - wsrestgatewaylogin
+      - wsrestregimenretper
+      - wsrestsellos
+      - wsrestsellosimportararchivo
+      - wsrestsellosprocesararchivo
+      - turnero
+      - wsrestobjetos-cop
+      - wsrestcedulon
+      - wsrestlogininterno
+      - wsrestddjj
+      - fe-kosmos-kit
+      - wsrestperfilunico
+      - wsselloescribano 
+      - wsrestredessociales
+      - wsrestmunicipios
+      - wsrestktk
+      - wsrestdfe360
+      - wsrestsujetosbe
+      - wsrestobjetosbe
+      - wsrestindustria
+      
+  deploy_dao:
+    applications:
+      - wsrestcuotaunica
+      - wsrestdaopsrm
+      - wsrestdebitoautomatico
+      - wsrestdebitos
+      - wsrestmercadopagodebitos
+      - wsrestconsultasdebitos 
+      - wsrestpayperticdebitos
+      - wsrestadhesiondao
+      - wsrestrecurrenciadao
+      - wsrestcantidaddebitos360 
+      - wsrestrecurrenciapagoticdao
+      - wsrestmercadopagodao
+
+  deploy_dc:
+    applications:
+      - cronjobpsrm
+      - rentas
+      - wsrestdeudacaminera
+      - cronjobunificado
+      - cronjobdao
+      - wsrestdc
+      - fe-interfaces
+      - magicbox
+      - wsrestdatosdistribuciondc
+
+#  deploy_gant:
+#    applications:
+
+  deploy_pagos:
+    applications:
+      - wsrestdecidir
+      - wsrestlink
+      - wsrestmediospago
+      - wsrestmobbexgateway
+      - wsrestmercadopagogateway
+      - wsrestnotificationserver
+      - wsrestpsrmgateway
+      - wsrestreportesant  
+      - wsrestseguridaddatos
+      - wsrestbilleteragateway
+      - wsrestpagoelectronico
+      - wsrestpagos360
+      - wsrestsiroroela
+      - wsrestmacrogateway
+      - wsrestgrilladepagos
+      - wsrestcomprobantestributarios
+      - wsrestpaypertic
+      - wsrestsugitgateway
+      - wsresthistorialdepagos
+      - wsrestmailspagos
+      - wsresttransaccionespagos
+      - wsrestcatastrogateway
+      - wsrestpayfun
+      - wsrestdaciongateway
+      - wsresttacatacagateway
+      - wsrestcomprobantespagos
+      - wsrestcomprobantes
+      - wsrestsiferegateway
+      - wsresthistorial360
+
+  deploy_planes_de_pagos:
+    applications:
+      - wsrestplanespagos
+      - wsrestids
+      - wsrestreportes
+      - wsrestgalileo
+      - wsrestgalileo-feature
+      - wsrestsucerp
+      - wsrestformaspago
+      - wsrestparameter
+      - wsrestidm
+      - wsocketinformedeuda
+      - wsrestplanesactivos360
+      - wsrestpdpmunicipio
+      - wsrestprecalculado
+      - wsrestplanespagoshistoricos
+      - wsrestetiquetas
+      - wsrestpdpaliviofiscal
+      - wsrestpaf
+
+  deploy_impuestos:
+    applications:
+      - wsdeudapatente
+      - wsrestfta
+      - wscronfta
+      - wsrestprocuradores
+      - wsrestliquidaciones
+      - wsrestabmprocuradores
+      #- wsrestindustria
+
+  deploy_sellos:
+    applications:
+      - wsrestsellos
+      - wsrestsellosimportararchivo
+      - wsrestsellosprocesararchivo 
+
+  deploy_dif:
+    applications:
+    - backendinteligenciafiscal
+    - backendactuaciones
+    - wsrestdifdatabricks
+ 
+  deploy_copernico:
+    applications:
+    - web-bff-cop
+    - readside-cop
+    - calculo-juicios-cop
+    - adel-cuotas-cop
+    - comparador-api-cop
+    - front-demo-cop
+    - gab-cop
+    - excepciones-cop
+    - pcs-cop
+    - wsrestdeudasujeto-cop
+    - wsrestcontencioso-cop
+    - wsrestipv-cop
+    - wsrestqcpobjeto-cop
+    - wsrestqcpsujeto-cop
+    - wsrestjuicios-cop
+    - ant-cop
+    - wsrestobjetos-cop
+    - ws-sujeto-v8-cop
+    - ws-manager-objetos-obligaciones-cop
+    - ws-manager-sujeto-obligaciones-cop
+    - dmn-manager-fe-cop
+    - pcs-saldo-tool-cop
+    - ws-cop-manager-read-descuento-30-cop
+    - copernico-suite-cop
+    - ws-cop-manager-read-juicios-cop
+    - ws-copernico-suite-back-cop
+    - clean-up-tool-cop
+    - wsrestdeudaant
+    - ws-manager-read-sujeto-interno-cop
+    - ws-cop-manager-recuperador-de-eventos-cop
+    - ws-manager-recuperador-objetos-cop
+    - ws-manager-recuperador-ants-cop
+    - ws-manager-resincronizador-del-30-cop
+    - ws-manager-ge-cantidad-objetos-cop
+    - ws-manager-ge-detalle-objetos-cop
+    - ws-cop-manager-read-objetos-by-params
+    - ws-manager-sit-fiscal-catastro-cop
+    - ws-manager-consulta-masiva-cop
+    - ws-manager-gen-obligaciones-inmobiliario-cop
+
+
+
+  deploy_fta:
+    applications:
+    - backftagoasig
+    - backftago
+    - backftaotaxprocus
+
+  deploy_puntajefip: 
+    applications:
+    - backproductividadfip
+    - botautocalculofip
+
+  deploy_crm: 
+    applications:
+    - wsrestgestiones360
+    - wsrestdfe360
+    - wsrestaud360
+
+  deploy_multiplug:
+    applications:
+    - backendmultiplug
+    - fe-multiplug
+
+  deploy_tasa360:
+    applications:
+    - fe-codeadmin
+    - fe-tasa360-backoffice
+    - fe-tasa360-ciudadano
+    - apicodeadmin
+    - tasa360-backend
+
+  deploy_fenix:
+    applications:
+    - fenixbe
+    - cuentacorrientebe
+  

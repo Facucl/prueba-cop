@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Web-Front/fe_gestiones.git
+  bucket_name: fe-gestiones
+  context: gestiones

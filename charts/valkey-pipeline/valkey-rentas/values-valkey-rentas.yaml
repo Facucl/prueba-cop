@@ -1,0 +1,4 @@
+project:
+  repository_url: https://gitlab-rentas.rentasweb.gob.ar/servidores/cachedb/valkey_rentas.git
+  ecr_registry: registry-sip.cba.gov.ar:5000
+  ecr_repository: valkey-rentas

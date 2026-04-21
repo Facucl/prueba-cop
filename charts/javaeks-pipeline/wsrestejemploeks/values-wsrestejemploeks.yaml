@@ -1,0 +1,4 @@
+project:
+  repository_url: ejemplo.git.com
+  ecr_registry: registry-sip.cba.gov.ar:5000
+  ecr_repository: wsrestejemploeks

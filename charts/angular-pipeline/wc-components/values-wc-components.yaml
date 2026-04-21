@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Architecture/wc-components.git
+  bucket_name: fe-wc-components
+  context: wc-components

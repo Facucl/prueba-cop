@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/RENTUP/crm-catastro-frontend.git
+  bucket_name: fe-catastro-crm 
+  context: fe-catastro-crm

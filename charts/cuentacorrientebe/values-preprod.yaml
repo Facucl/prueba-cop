@@ -1,0 +1,168 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "backftago"
+  # image sets the repo,tag and pullPolicy of the project # TEST
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/backftago"
+    tag: release-0.0.710
+    pullPolicy: IfNotPresent
+
+  # Namespace where release will be deployed
+  namespace: backftago-preprod
+  clusterName: preprod-rentas
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "None"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+
+node:
+
+  api:
+    resources: 
+      requests:
+        cpu: 500m
+        memory: 1500Mi
+      limits:
+        cpu: 1000m
+        memory: 4096Mi
+
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      scc:
+        enabled : true
+        rootUser: false
+
+    env: 
+      - name: RUNTIME_ENVIRONMENT
+        value: preprod
+      - name: PROXY_URL
+        value: http://proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: '8080'
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.preprod.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal|*.tempuri.org|*.azure-api.net|*.dnrpa.gov.ar|*.test.cba.gov.ar"
+      - name: PERM_SIZE
+        value: 256m
+      - name: MAX_PERM_SIZE
+        value: 256m
+      - name: XMS
+        value: 1024m
+      - name: XMX
+        value: 1024m
+      - name: PORT
+        value: 9000
+      - name: NODE_EXTRA_CA_CERTS
+        value: /srv/backend/ca.pem
+
+    
+    # hostAliases:
+    #   ip: "10.250.10.159"
+    #   hostnames:
+    #     - "kafka-1"
+    #     - "kafka-2"
+    #     - "kafka-3"
+
+    envVars:
+      secretVars:
+        - name: rentas-db
+        - name: dbcredentials-backftago-preprod
+        - name: awstituloscredentials-backftago-preprod
+        - name: awsftacredentials-backftago-preprod
+        - name: awspublicocredentials-backftago-preprod
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: true
+      path: /Ftago/log/healthz
+      port: 9000
+      failureThreshold: 3
+      initialDelaySeconds: 80
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: true
+      path: /Ftago/log/healthz
+      port: 9000
+      failureThreshold: 3
+      initialDelaySeconds: 80
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts: 
+      - mountPath: /srv/backend/config/env/.env.preprod
+        name: variables-preprod
+        subPath: .env.preprod
+        readOnly: true
+      - mountPath: /tmp/certs/bancor.crt.pem
+        name: bancorcrt
+        subPath: bancor.crt.pem
+      - mountPath: /tmp/certs/bancor.key.pem
+        name: bancorkey
+        subPath: bancor.key.pem
+      - mountPath: /srv/backend/ca.pem
+        name: ca
+        subPath: ca.pem
+      - mountPath: /srv/backend/appdgr.crt
+        name: appdgr
+        subPath: appdgr.crt
+
+    extraVolumes: 
+      - name: variables-preprod
+        type: configMap
+        configMapName: variables-preprod
+        defaultMode: 420 
+      - name: bancorcrt
+        type: secret
+        secretName: bancorcrt
+        defaultMode: 420
+      - name: bancorkey
+        type: secret
+        secretName: bancorkey
+        defaultMode: 420
+      - name: ca
+        type: secret
+        secretName: ca
+        defaultMode: 420
+      - name: appdgr
+        type: secret
+        secretName: appdgr
+        defaultMode: 420
+        
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations:
+          haproxy.router.openshift.io/timeout: "100s" 
+      hosts: 
+        - host: ftago-back-preprod.apps.apps.preprod-rentas-os.gobiernocba.gov.ar
+          paths:
+            - path: /Ftago/
+              pathType: Prefix
+
+    service:
+        port: 80
+        targetPort: 9000

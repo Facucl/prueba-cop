@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/tasa360/fe-codeadmin.git
+  bucket_name: fe-codeadmin
+  context: quickdev

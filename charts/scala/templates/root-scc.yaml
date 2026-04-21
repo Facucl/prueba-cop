@@ -1,0 +1,33 @@
+{{- if and .Values.api.enabled .Values.global.enabled .Values.api.securityContext.scc.enabled .Values.api.securityContext.scc.rootUser -}}
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: {{ .Values.global.namespace }}-scc
+allowHostDirVolumePlugin: true
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: true
+allowedCapabilities: null
+defaultAddCapabilities: null
+fsGroup:
+  type: RunAsAny
+groups: []
+priority: 10
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - MKNOD
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:{{ .Values.global.namespace }}:{{ .Values.global.projectName }}-cluster
+  - system:serviceaccount:{{ .Values.global.namespace }}:default
+volumes:
+  - '*'
+{{- end }}

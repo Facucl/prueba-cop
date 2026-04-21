@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Contribuyentes-Especiales/contribuyentes-especiales/fe-emision-impuestos.git
+  bucket_name: fe-emision-impuestos
+  context: emision-impuestos

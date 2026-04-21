@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ws-copernico-suite-back-cop-prod
+  namespace: openshift-gitops
+spec:
+  destination:
+    namespace: "ws-copernico-suite-back-cop-prod"
+    server: 'https://api.prod-rentas-os.gobiernocba.gov.ar:6443'
+  source:
+    path: charts/ws-copernico-suite-back-cop
+    repoURL: https://git.rentasweb.gob.ar/DevOps/helm-charts.git
+    helm:
+      valueFiles:
+        - values-prod-os.yaml
+    targetRevision: master
+  project: rcb-gitops-projects-ws-copernico-suite-back-cop-prod
+  # syncPolicy: {}
+  syncPolicy:
+    automated:
+      selfHeal: false
+    syncOptions:
+      - Validate=false
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=false

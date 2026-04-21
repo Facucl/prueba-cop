@@ -1,0 +1,103 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+
+  # Used to define custom fullname in template.
+  projectName: "valkey"
+
+  # Image sets the repo, tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/valkey"
+    tag: "latest"
+    pullPolicy: "IfNotPresent"
+
+  # Namespace where release will be deployed
+  namespace: "valkey"
+  clusterName: "cicd"
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: ""
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: ""
+
+api:
+  # True if you want to enable api deployment.
+  enabled: true
+
+  replicaCount: 1
+
+  securityContext:
+    enabled: false
+    runAsUser: 1001
+    runAsGroup: 0
+    scc:
+      enabled: true
+      rootUser: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  env: []
+
+  envVars:
+    secretVars: []
+    configMapVars: []
+
+  livenessProbe:
+    enabled: true
+    port: 6398
+    failureThreshold: 3
+    initialDelaySeconds: 20
+    successThreshold: 1
+    periodSeconds: 10
+    timeoutSeconds: 2
+
+  readinessProbe:
+    enabled: true
+    port: 6398
+    failureThreshold: 3
+    initialDelaySeconds: 10
+    successThreshold: 1
+    periodSeconds: 10
+    timeoutSeconds: 2
+
+  terminationGracePeriodSeconds: 30
+  revisionHistoryLimit: 2
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 1
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 70
+
+  containerName: valkey
+
+  affinity: null
+  tolerations: null
+  nodeSelector: null
+
+  ingress:
+    enabled: false
+    className: ""
+    labels: {}
+    annotations: {}
+    hosts: []
+
+  service:
+    enabled: true
+    name: ""
+    headless: false
+    type: ClusterIP
+    port: 6398
+    targetPort: 6398
+    annotations: {}
+
+  volumeMounts: []
+  extraVolumes: []

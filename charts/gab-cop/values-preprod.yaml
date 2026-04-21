@@ -1,0 +1,90 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "gab-cop"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/gab-cop"
+    tag: release-0.0.6
+    pullPolicy: Always
+
+  # Namespace where release will be deployed
+  namespace: gab-cop-preprod
+  clusterName: preprod-gab-cop
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "ClusterFirst"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+
+node:
+  api:
+    resources: 
+      requests:
+        cpu: 30m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 512Mi
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      scc:
+        enabled : true
+        rootUser: false
+    envVars:
+      secretVars:
+        - name: gab-secret
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: true
+      path: /healthcheck
+      port: http
+      failureThreshold: 30
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 1
+
+    readinessProbe:
+      enabled: true
+      path: /healthcheck
+      port: 3001
+      failureThreshold: 3
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts: {}
+    extraVolumes: {}
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: "gab-cop.apps.apps.preprod-rentas-os.gobiernocba.gov.ar"
+          paths:
+            - path: /
+              pathType: Prefix
+    service:
+      port: 3001
+      targetPort: 3001
+

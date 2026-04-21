@@ -1,0 +1,134 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "wsrestpagoelectronico"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/wsrestpagoelectronico"
+    tag: release-0.0.131
+    pullPolicy: IfNotPresent
+
+  # Namespace where release will be deployed
+  namespace: wsrestpagoelectronico-desa
+  clusterName: desa-rentas
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "None"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+
+java:
+
+  api:
+    resources: 
+      limits:
+        cpu: 1000m
+        memory: 1100Mi
+
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 1000
+      runAsGroup: 1000      
+      scc:
+        enabled : true
+        rootUser: false
+
+    env: 
+      - name: RUNTIME_ENVIRONMENT
+        value: DESA
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: '8080'
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal|*.interbanking.com.ar|solicitud.gp.redlink.com.ar"
+      - name: PERM_SIZE
+        value: 256m
+      - name: MAX_PERM_SIZE
+        value: 256m
+      - name: XMS
+        value: 1024m
+      - name: XMX
+        value: 1024m
+
+    envVars:
+      secretVars:
+        - name: rentas-db 
+        - name: dbcredentials-wsrestpagoelectronico-desa
+        - name: truststore-wsrestpagoelectronico-desa
+        - name: ib-wsrestpagoelectronico-desa
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: true
+      path: /WSRestPagoElectronico/healthz
+      port: 8080
+      failureThreshold: 3
+      initialDelaySeconds: 80
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: true
+      path: /WSRestPagoElectronico/healthz
+      port: 8080
+      failureThreshold: 3
+      initialDelaySeconds: 80
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts: 
+      - mountPath: /tmp/cacerts/DGCIT_Root_CA.crt
+        name: dgcit-root-ca
+        subPath: DGCIT_Root_CA.crt  
+      - mountPath: /tmp/cacerts/inter.crt
+        name: interbankcert
+        subPath: inter.crt
+      - mountPath: /tmp/cacerts/30_69078352_1.cer
+        name: interbanking
+        subPath: 30_69078352_1.cer
+      - mountPath: /usr/local/openjdk-8/jre/lib/security/keystore
+        name: keyinterbanking
+        subPath: keystore   
+    extraVolumes:
+      - name: dgcit-root-ca
+        type: secret
+        secretName: dgcit-root-ca
+      - name: interbanking
+        type: secret
+        secretName: interbanking
+      - name: interbankcert
+        type: secret
+        secretName: interbankcert
+      - name: keyinterbanking
+        type: configMap
+        defaultMode: 0664
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: apps.apps.desa-rentas.gobiernocba.gov.ar
+          paths:
+            - path: /WSRestPagoElectronico/
+              pathType: Prefix

@@ -1,0 +1,110 @@
+{{- if and .Values.api.enabled .Values.global.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.global.projectName }}-app
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.global.projectName }}-app # Label consistente para el cluster
+spec:
+  replicas: {{ .Values.api.replicas }}
+  revisionHistoryLimit: {{ .Values.api.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      app: {{ .Values.global.projectName }}-app
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.global.projectName }}-app
+    spec:
+      serviceAccountName: {{ .Values.global.projectName }}-sa # <--- IMPORTANTE: Para RBAC
+      dnsPolicy: {{ .Values.global.dnsPolicy }}
+      containers:
+        - name: {{ .Values.global.projectName }}-app
+          image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management # <--- Puerto nativo de Akka Management
+              containerPort: 8558
+              protocol: TCP
+            - name: jgroups
+              containerPort: 7800
+              protocol: TCP
+          resources:
+            requests:
+              cpu: {{ .Values.api.resources.requests.cpu }}
+              memory: {{ .Values.api.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.api.resources.limits.cpu }}
+              memory: {{ .Values.api.resources.limits.memory }}
+          env:
+            # --- Variables de Akka Cluster (Fijas) ---
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: KUBERNETES_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: KUBERNETES_SERVICE_NAME
+              value: "{{ .Values.global.projectName }}-headless"
+            - name: SELECTOR_LABEL_VALUE
+              value: "{{ .Values.global.projectName }}-app"
+            - name: REQUIRED_CONTACT_POINT_NR
+              value: "2"
+
+            # --- Variables dinámicas desde values.yaml ---
+            {{- range .Values.api.env }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+              valueFrom:
+                {{- if .valueFrom.secretKeyRef }}
+                secretKeyRef:
+                  name: {{ .valueFrom.secretKeyRef.name | quote }}
+                  key: {{ .valueFrom.secretKeyRef.key | quote }}
+                {{- else if .valueFrom.configMapKeyRef }}
+                configMapKeyRef:
+                  name: {{ .valueFrom.configMapKeyRef.name | quote }}
+                  key: {{ .valueFrom.configMapKeyRef.key | quote }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+        
+          
+          volumeMounts:
+            {{- range .Values.volumeMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: 8558 # Recomendado usar el puerto de management para probes en Akka
+              scheme: {{ .Values.livenessProbe.scheme }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: 8558 # Recomendado usar el puerto de management para probes en Akka
+              scheme: {{ .Values.readinessProbe.scheme }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+      volumes:
+        {{- range .Values.extraVolumes }}
+        - name: {{ .name }}
+          secret:
+            secretName: {{ .secret.secretName }}
+        {{- end }}
+{{- end }}

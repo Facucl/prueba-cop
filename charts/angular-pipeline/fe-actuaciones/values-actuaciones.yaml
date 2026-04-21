@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/InteligenciaFiscal/fe-actuaciones.git
+  bucket_name: fe-actuaciones
+  context: fe-actuaciones

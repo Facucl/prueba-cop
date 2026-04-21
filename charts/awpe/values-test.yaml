@@ -1,0 +1,91 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "pagoelectronicoawpe"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/jenkins_jdk7_eap64_awpe"
+    tag: lab
+    pullPolicy: IfNotPresent
+
+  # Namespace where release will be deployed
+  namespace: pagoelectronicoawpe
+  clusterName: lab
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: ""
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: ""
+
+java:
+
+  api:
+    resources: 
+      limits:
+        cpu: 1500m
+        memory: 3Gi
+
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+    terminationGracePeriodSeconds: 60
+    revisionHistoryLimit: 2
+    replicacount: 0
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      scc:
+        enabled : true
+        rootUser: false
+
+
+    envVars:
+      secretVars: {}  
+      configMapVars: {}
+      
+    env: 
+      - name: RUNTIME_ENVIRONMENT
+        value: LAB
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+
+    volumeMounts: {}
+      # - mountPath: /opt/DS/contextDESA.xml.zip
+      #   name: context
+      #   subPath: contextDESA.xml.zip
+      # - mountPath: /opt/zipass
+      #   name: zipass
+      #   subPath: zipass
+
+    extraVolumes: {}
+      # - name: context
+      #   type: configMap
+      #   defaultMode: 420
+      # - name: zipass
+      #   type: secret
+      #   secretName: zipass
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: false
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: pagoelectronicoawpe-lab.apps.cicd.syc.local
+          paths:
+            - path: /
+              pathType: Prefix
+      # tls: [ ]
+      #   #  - secretName: chart-example-tls
+      #   #    hosts:
+      # #      - chart-example.local

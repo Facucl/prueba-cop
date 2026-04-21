@@ -1,0 +1,208 @@
+global:
+  enabled: true
+  projectName: redis-cache-service-cop
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/redis-cache-service-cop
+    tag: release-0.0.25
+    pullPolicy: IfNotPresent
+  namespace: redis-cache-service-cop-test
+  clusterName: eks-test-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+nodeeks:
+  api:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi 
+      limits:
+        cpu: 1000m
+        memory: 1100Mi
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: TEST
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: '8080'
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "3000"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: redis_cache_manager_port
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: redis_cache_manager_port
+      - name: redis_cache_manager_env
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: redis_cache_manager_env 
+      - name: app_id
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: app_id
+      - name: rest_timer
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: rest_timer
+      - name: app_name
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: app_name
+      - name: backend_url
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: backend_url 
+      - name: api_key_sit_fiscal
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: api_key_sit_fiscal
+      - name: oauth_url
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: oauth_url
+      - name: redis_url
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: redis_url
+      - name: redis_pass
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: redis_pass 
+      - name: cache_ttl_seconds
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: cache_ttl_seconds
+      - name: oauth_user
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: oauth_user                  
+      - name: redis_cluster_mode
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: redis_cluster_mode
+      - name: redis_tls_reject_unauthorized
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: redis_tls_reject_unauthorized
+      - name: redis_enable_tls
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: redis_enable_tls                  
+      - name: oauth_pswd
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: oauth_pswd 
+      - name: redis_user
+        valueFrom:
+          secretKeyRef:
+            name:  env-redis-cache-service-cop-test
+            key: redis_user
+      
+
+
+  livenessProbe:
+    enabled: fasle
+    path: /rest/redis/cache/service/healthz
+    port: 3015
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: false
+    path: /rest/redis/cache/service/healthz
+    port: 3015
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  volumeMounts: {}
+  extraVolumes: {}
+
+  ingress:
+    enabled: true
+    className: alb
+    name: ingress-sip-test
+    labels: {}
+    annotations:
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-test
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/group.name: alb-eks-test
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/cors-allow-origin: "https://test.rentascordoba.gob.ar"
+      nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal-test.rentascordoba.gob.ar
+        paths:
+          - path: /rest
+            pathType: Prefix
+            backend:
+              service: 
+                name: redis-cache-service-cop-service
+                port:
+                  number: 80
+      - host: backend-cloud-test.rentascordoba.gob.ar
+        paths:
+          - path: /rest
+            pathType: Prefix
+            backend:
+              service: 
+                name: redis-cache-service-cop-service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: redis-cache-service-cop-service
+    type: ClusterIP
+    port: 80
+    targetPort: 3015
+    labels:
+      environment: test

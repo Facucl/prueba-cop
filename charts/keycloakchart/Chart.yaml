@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: JAVA EKS - Helm Chart
+name: keycloakchart
+version: 0.0.1
+keywords:
+  - keycloakchart

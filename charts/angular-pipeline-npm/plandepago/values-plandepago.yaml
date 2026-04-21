@@ -1,0 +1,5 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Web-Front/kolektor-planes-pago
+  node_version: '12.8'
+  bucket_name: fe-plan-de-pago
+  context: plan-de-pago

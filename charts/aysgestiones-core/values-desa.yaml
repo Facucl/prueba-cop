@@ -1,0 +1,506 @@
+global:
+  enabled: true
+  projectName: aysgestiones-core-desa
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/aysgestiones-core
+    tag: release-0.0.139
+    pullPolicy: IfNotPresent
+  namespace: aysgestiones-core-desa
+  clusterName: eks-desa-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+  
+javaeks-akka:
+  serviceHeadless:
+    enabled: true
+    name: aysgestiones-core-headless
+    publishNotReadyAddresses: true
+
+    
+  api:
+    enabled: true
+    nodeSelector:
+        node-type: akka-ia
+    tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "akka-ia"
+          effect: "NoSchedule"
+
+    resources: 
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 3000m
+        memory: 3100Mi
+
+    terminationGracePeriodSeconds: 60
+    revisionHistoryLimit: 2
+    replicas: 3
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: DESA
+      - name: PORT
+        value: "8080"
+      - name: PERM_SIZE
+        value: 256m
+      - name: MAX_PERM_SIZE
+        value: 256m
+      - name: XMS
+        value: 1024m
+      - name: XMX
+        value: 1024m
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: KUBERNETES_SERVICE_NAME
+        value: "aysgestiones-core-headless"
+      - name: SELECTOR_LABEL_VALUE
+        value: "aysgestiones-core-desa-app"
+      - name: REQUIRED_CONTACT_POINT_NR
+        value: "2"
+      - name: AKKA_DISCOVERY_METHOD
+        value: "kubernetes-api"
+      - name: AKKA_CLUSTER_BOOTSTRAP_SERVICE_NAME
+        value: "aysgestiones-core-headless"
+      - name: AKKA_MANAGEMENT_PORT
+        value: "8558"
+      - name: AKKA_MANAGEMENT_PORT_NAME
+        value: "management"
+      - name: AKKA_MANAGEMENT_HTTP_HOSTNAME
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+      - name: AKKA_MANAGEMENT_HTTP_PORT
+        value: "8558"
+      - name: AKKA_CLUSTER_BOOTSTRAP_PROBING_FAILURE_TIMEOUT
+        value: "40s"
+      - name: HTTP_PORT
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: HTTP_PORT
+      - name: STANDALONE_SINGLE_NODE
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: STANDALONE_SINGLE_NODE
+      - name: ACL_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: ACL_ENABLED
+      - name: AKKA_LICENSE_KEY
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AKKA_LICENSE_KEY
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DB_HOST
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DB_PORT
+      - name: DB_DATABASE
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DB_DATABASE
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DB_USER
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DB_PASSWORD
+      - name: DB_SCHEMA
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DB_SCHEMA
+      - name: DB_SSL_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DB_SSL_ENABLED
+      - name: DB_SSL_MODE
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DB_SSL_MODE
+      - name: AYSGESTIONES_SHARED_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_SHARED_SECRET
+      - name: AYSGESTIONES_CRM_ISSUER
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_CRM_ISSUER
+      - name: AYSGESTIONES_CRM_AUDIENCE
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_CRM_AUDIENCE
+      - name: AYSGESTIONES_CRM_ALLOWED_ROLES
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_CRM_ALLOWED_ROLES
+      - name: AYSGESTIONES_CRM_TTL_MIN
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_CRM_TTL_MIN
+      - name: AYSGESTIONES_ADMIN_ISSUER
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_ADMIN_ISSUER
+      - name: AYSGESTIONES_ADMIN_AUDIENCE
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_ADMIN_AUDIENCE
+      - name: AYSGESTIONES_ADMIN_ALLOWED_ROLES
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_ADMIN_ALLOWED_ROLES
+      - name: AYSGESTIONES_ADMIN_TTL_MIN
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_ADMIN_TTL_MIN
+      - name: AYSGESTIONES_TEST_TOKEN_ENDPOINT_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_TEST_TOKEN_ENDPOINT_ENABLED
+      - name: AYSGESTIONES_TEST_TOKEN_KEY
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_TEST_TOKEN_KEY
+      - name: CRM_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_BASE_URL
+      - name: CRM_VERSION_PATH
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_VERSION_PATH
+      - name: CRM_TIMEOUT_MS
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_TIMEOUT_MS
+      - name: CRM_OAUTH_BASE_AUTH_URL
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_OAUTH_BASE_AUTH_URL
+      - name: CRM_OAUTH_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_OAUTH_TENANT_ID
+      - name: CRM_OAUTH_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_OAUTH_CLIENT_ID
+      - name: CRM_OAUTH_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_OAUTH_CLIENT_SECRET
+      - name: CRM_OAUTH_TIMEOUT_MS
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_OAUTH_TIMEOUT_MS
+      - name: CRM_OAUTH_SKEW_SEC
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_OAUTH_SKEW_SEC
+      - name: CRM_CASOS_FROM_MONTHS_AGO
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_CASOS_FROM_MONTHS_AGO
+      - name: CRM_CASOS_TO_MONTHS_AHEAD
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: CRM_CASOS_TO_MONTHS_AHEAD
+      - name: TRAMITE_WORKFLOW_TIMEOUT_SECONDS
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: TRAMITE_WORKFLOW_TIMEOUT_SECONDS
+      - name: TRAMITE_WORKFLOW_MAX_RETRIES
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: TRAMITE_WORKFLOW_MAX_RETRIES
+      - name: ENRICHMENT_WORKFLOW_TIMEOUT_SECONDS
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: ENRICHMENT_WORKFLOW_TIMEOUT_SECONDS
+      - name: ENRICHMENT_WORKFLOW_MAX_RETRIES
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: ENRICHMENT_WORKFLOW_MAX_RETRIES
+      - name: AYSGESTIONES_PREAUTH_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_PREAUTH_BASE_URL
+      - name: AYSGESTIONES_PREAUTH_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_PREAUTH_CLIENT_ID
+      - name: AYSGESTIONES_PREAUTH_SUBSCRIPTION_KEY
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_PREAUTH_SUBSCRIPTION_KEY
+      - name: AYSGESTIONES_PREAUTH_SKEW_SEC
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AYSGESTIONES_PREAUTH_SKEW_SEC
+      - name: DFEF_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DFEF_BASE_URL
+      - name: DFEF_VERSION_PATH
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DFEF_VERSION_PATH
+      - name: DFEF_SUBSCRIPTION_KEY
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DFEF_SUBSCRIPTION_KEY
+      - name: DFEF_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DFEF_CLIENT_ID
+      - name: DFEF_TIMEOUT_MS
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: DFEF_TIMEOUT_MS
+      - name: MODEL_PROVIDER
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: MODEL_PROVIDER
+      - name: OLLAMA_PROVIDER
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_PROVIDER
+      - name: OLLAMA_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_BASE_URL
+      - name: OLLAMA_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_API_KEY
+      - name: OLLAMA_MODEL_NAME
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_MODEL_NAME
+      - name: OLLAMA_TEMPERATURE
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_TEMPERATURE
+      - name: OLLAMA_TOP_P
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_TOP_P
+      - name: OLLAMA_CONNECTION_TIMEOUT
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_CONNECTION_TIMEOUT
+      - name: OLLAMA_RESPONSE_TIMEOUT
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_RESPONSE_TIMEOUT
+      - name: OLLAMA_MAX_RETRIES
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OLLAMA_MAX_RETRIES
+      - name: OCR_EXTRACT_DOC_MODEL_NAME
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OCR_EXTRACT_DOC_MODEL_NAME
+      - name: OCR_EXTRACT_IMAGE_MODEL_NAME
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OCR_EXTRACT_IMAGE_MODEL_NAME
+      - name: OCR_EXTRACT_PDF_MODEL_NAME
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OCR_EXTRACT_PDF_MODEL_NAME
+      - name: OCR_EXTRACT_XLSX_MODEL_NAME
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OCR_EXTRACT_XLSX_MODEL_NAME
+      - name: OCR_EXTRACT_XML_MODEL_NAME
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: OCR_EXTRACT_XML_MODEL_NAME
+      - name: AKKA_LOG_CONFIG_ON_START
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AKKA_LOG_CONFIG_ON_START
+      - name: AKKA_LOGLEVEL
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AKKA_LOGLEVEL
+      - name: AKKA_STDOUT_LOGLEVEL
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: AKKA_STDOUT_LOGLEVEL
+      - name: JWT_NORMATIVA_ISSUER
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: JWT_NORMATIVA_ISSUER
+      - name: JWT_NORMATIVA_AUDIENCE
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: JWT_NORMATIVA_AUDIENCE
+      - name: JWT_NORMATIVA_ALLOWED_ROLES
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: JWT_NORMATIVA_ALLOWED_ROLES
+      - name: JWT_NORMATIVA_TTL_MIN
+        valueFrom:
+          secretKeyRef:
+            name: env-aysgestiones-core-desa
+            key: JWT_NORMATIVA_TTL_MIN
+  
+  livenessProbe:
+    enabled: true
+    path: /alive
+    port: 8558
+    scheme: HTTP
+    failureThreshold: 5
+    initialDelaySeconds: 60 # Aumentado: Akka necesita tiempo para el bootstrap inicial
+    periodSeconds: 20
+    timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: true
+    path: /ready
+    port: 8558
+    scheme: HTTP
+    failureThreshold: 5
+    initialDelaySeconds: 45 # Le damos 45 segundos antes de empezar a preguntar si está listo
+    periodSeconds: 20
+    timeoutSeconds: 10
+
+  volumeMounts: {}
+  extraVolumes: {}
+
+  ingress:
+    enabled: true
+    className: alb
+    name: ingress-sip-desa
+    labels: {}
+    annotations:
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-desa
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/group.name: alb-eks-desa
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      alb.ingress.kubernetes.io/healthcheck-path: /aysgestiones-core/healthz
+      alb.ingress.kubernetes.io/healthcheck-port: '8080'
+      alb.ingress.kubernetes.io/success-codes: '200'
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/cors-allow-origin: "https://desa.rentascordoba.gob.ar"
+      nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal-desa.rentascordoba.gob.ar
+        paths:
+          - path: /aysgestiones-core
+            pathType: Prefix
+            backend:
+              service: 
+                name: aysgestiones-core-service
+                port:
+                  number: 80
+      - host: backend-cloud-desa.rentascordoba.gob.ar
+        paths:
+          - path: /aysgestiones-core
+            pathType: Prefix
+            backend:
+              service: 
+                name: aysgestiones-core-service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: aysgestiones-core-service
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+    labels:
+      environment: desa

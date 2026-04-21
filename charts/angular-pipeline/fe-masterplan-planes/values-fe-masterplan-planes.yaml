@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/masterplan/fe-masterplan-planes.git
+  bucket_name: fe-masterplan-planes
+  context: portal-planes-de-pago

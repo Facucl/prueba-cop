@@ -1,0 +1,192 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  description: | 
+    This pipeline clones a git repo, then echoes the README file to the stdout.
+  params:
+  - name: git-repo-source-url
+    type: string
+    description: The git repo URL to clone from.
+  - name: git-repo-source-revision
+    description: The git branch where to clone from.
+  - name: ecr-registry
+    type: string
+    description: ECR Registry URL where to push the image
+  - name: ecr-repository
+    type: string
+    description: ECR Repository where to push the image
+  - name: tag-name
+    type: string
+    description: Image tag
+  - name: deploy-to
+    type: string
+    description: environments where to deploy the new release
+  - name: build-context
+    type: string
+    description: environment where to build the image for genexus applications
+  workspaces:
+  - name: git-basic-auth
+    description: |
+      This workspace contains basic auth configuration to be used by git-clone
+  - name: aws-credentials
+    description: |
+      This workspace contains the aws credentials to authenticate to ECR
+  - name: source-dir
+    description: | 
+      This workspace contains the cloned repo files, so they can be read by the
+      next task.   
+
+  tasks:
+  #############################
+  # CHECK DEPLOYMENT AVAILABILITY BACKENDS
+  #############################
+
+    - name: check-deployment-availability
+      params:
+        - name: deploy-to
+          value: $(params.deploy-to)
+      taskSpec:
+        params:
+          - name: deploy-to
+            type: string
+        steps:
+        - name: check-build-context
+          image: registry-sip.cba.gov.ar:5000/curlimages:latest
+          script: |
+            #!/bin/sh -xe
+            echo "Contexto= $(params.deploy-to)"
+            if [ "$(params.deploy-to)" == "prod" ]; then
+              result=$(curl -sSf https://can-i-deploy.rentasweb.gob.ar/despliegue)
+              if [ "$result" == "OK" ]; then
+                echo "Se puede desplegar en este momento"
+              else
+                echo "No se puede desplegar en este momento"
+                exit 1
+              fi
+            else
+              echo "No se esta ejecutando un deploy en PROD, no es necesario validar contra CAN I DEPLOY"
+            fi
+
+  ###############
+  # GIT CLONE 
+  ###############   
+    - name: git-clone
+      taskRef:
+        name: tekton-git-clone
+        kind: ClusterTask    
+      params:
+        - name: url
+          value: $(params.git-repo-source-url)
+        - name: revision
+          value: $(params.git-repo-source-revision)
+      workspaces:
+        - name: output
+          workspace: source-dir
+        - name: basic-auth
+          workspace: git-basic-auth         
+  
+
+  ###############
+  # KANIKO BUILD
+  ###############
+    - name: build-push-kaniko
+      runAfter: ["git-clone"]
+      taskRef:
+        name: kaniko
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: source-dir
+        - name: aws-credentials
+          workspace: aws-credentials            
+      params:
+        - name: IMAGE
+          value: "$(params.ecr-registry)/$(params.ecr-repository):$(params.tag-name)" 
+        - name: EXTRA_ARGS
+          value: [ '--build-arg' , 'BUILD_CONTEXT=$(params.build-context)' , '--build-arg' , "HTTPS_PROXY=http://proxysrv.gobiernocba.gov.ar:8080", '--build-arg' , "GOB_PROXY=http://proxysrv.gobiernocba.gov.ar:8080", '--build-arg' , 'TAG_NAME=$(params.tag-name)']
+          
+   
+  ######################
+  # Update deploy values 
+  ######################
+    - name: git-cli
+      runAfter: ["build-push-kaniko"]
+      taskRef:
+        name: git-cli
+        kind: ClusterTask
+      params:
+        - name: GIT_USER_NAME
+          value: tekton 
+        - name: GIT_USER_EMAIL
+          value: tekton@kolektor.com.ar
+        - name: GIT_SCRIPT
+          value: |
+            if [ ! -z "$(params.deploy-to)" ]; then
+              echo "[INFO] Automatic deploy to $(params.deploy-to) started"
+              git clone https://git.rentasweb.gob.ar/DevOps/helm-charts.git
+              cd helm-charts/charts/$(params.ecr-repository)
+
+              # Normaliza espacios y obtiene ambientes (e.g.: "desa preprod test")
+              DEPLOY_ENVS="$(echo "$(params.deploy-to)" | xargs)"
+
+              # Detecta banderas por tipo de tag
+              IS_EKS=false
+              IS_FEATURE=false
+              echo "$(params.tag-name)" | grep -q "_eks" && IS_EKS=true
+              echo "$(params.tag-name)" | grep -Eq "_feature$" && IS_FEATURE=true
+
+              # Función de reemplazo de tag
+              replace_tag() {
+                local target_file="$1"
+                if [ -f "$target_file" ]; then
+                  sed -i "s/tag:.*/tag: $(params.tag-name)/g" "$target_file"
+                  echo "[INFO] Updated tag in $target_file"
+                else
+                  echo "[WARN] File not found: $target_file"
+                fi
+              }
+
+              # Itera por cada ambiente solicitado
+              for ENV in $DEPLOY_ENVS; do
+                case "$ENV" in
+                  preprod|desa|test) ;;
+                  *) echo "[WARN] Unknown environment '$ENV' — skipping"; continue ;;
+                esac
+
+                if $IS_EKS; then
+                  # Tag con _eks -> modificar values-eks-<env>.yaml
+                  TARGET_FILE="values-eks-${ENV}.yaml"
+                elif $IS_FEATURE; then
+                  # Tag que termina en _feature -> values-feature-<env>.yaml
+                  TARGET_FILE="values-feature-${ENV}.yaml"
+                else
+                  # Tag regular -> values-<env>.yaml (o primer match values-<env>*.yaml)
+                  if [ -f "values-${ENV}.yaml" ]; then
+                    TARGET_FILE="values-${ENV}.yaml"
+                  else
+                    TARGET_FILE="$(ls -1 | grep -E "^values-${ENV}.*\.yaml$" | head -n1 || true)"
+                    [ -z "$TARGET_FILE" ] && echo "[WARN] No values file for env '$ENV'" && continue
+                  fi
+                fi
+
+                replace_tag "$TARGET_FILE"
+              done
+
+              git add -A
+              if git diff --cached --quiet; then
+                echo "[INFO] No changes to commit."
+              else
+                git commit -m "chore: pipeline update image tag to $(params.tag-name)"
+                git push origin master
+              fi
+            else
+              echo "[INFO] Automatic deploy not requested"
+            fi
+      workspaces:
+        - name: source
+          workspace: source-dir
+        - name: basic-auth
+          workspace: git-basic-auth
+

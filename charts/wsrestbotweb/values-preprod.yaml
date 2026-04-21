@@ -1,0 +1,323 @@
+global:
+  enabled: true
+  projectName: wsrestbotweb
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/wsrestbotweb
+    tag: release-1.0.7
+    pullPolicy: IfNotPresent
+  namespace: wsrestbotweb-preprod
+  clusterName: eks-preprod-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+nodeeks:
+  api:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: preprod
+      - name: PORT
+        value: "8000"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: AWS_ACCESS_KEY_ID
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: AWS_SECRET_ACCESS_KEY
+      - name: APIM_TOKEN_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: APIM_TOKEN_URL
+      - name: APIM_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: APIM_CLIENT_ID
+      - name: APIM_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: APIM_CLIENT_SECRET
+      - name: COP_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: COP_BASE_URL
+      - name: COPERNICO_FLOW_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: COPERNICO_FLOW_ENABLED
+      - name: CORS_ORIGINS_ALLOWED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: CORS_ORIGINS_ALLOWED
+      - name: OPENAI_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: OPENAI_API_KEY
+      - name: POSTGRES_ASSISTANT_RENTAS_DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: POSTGRES_ASSISTANT_RENTAS_DB_NAME
+      - name: POSTGRES_ASSISTANT_RENTAS_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: POSTGRES_ASSISTANT_RENTAS_URL
+      - name: POSTGRES_ASSISTANT_RENTAS_SCHEMA_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: POSTGRES_ASSISTANT_RENTAS_SCHEMA_NAME
+      - name: POSTGRES_ASSISTANT_RENTAS_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: POSTGRES_ASSISTANT_RENTAS_USERNAME
+      - name: POSTGRES_ASSISTANT_RENTAS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: POSTGRES_ASSISTANT_RENTAS_PASSWORD
+      - name: POSTGRES_MAX_CONNECTIONS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: POSTGRES_MAX_CONNECTIONS
+      - name: QDRANT_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: QDRANT_API_KEY
+      - name: QDRANT_COLLECTIONS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: QDRANT_COLLECTIONS
+      - name: QDRANT_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: QDRANT_URL
+      - name: QDRANT_COLLECTION_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: QDRANT_COLLECTION_NAME
+      - name: WORKING_ENVIRONMENT
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: WORKING_ENVIRONMENT
+      - name: HAS_LOCAL_DELAY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: HAS_LOCAL_DELAY
+      - name: AWS_DEFAULT_REGION
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: AWS_DEFAULT_REGION
+      - name: AZURE_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: AZURE_TENANT_ID
+      - name: AZURE_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: AZURE_CLIENT_ID
+      - name: AZURE_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: AZURE_CLIENT_SECRET
+      - name: BOTFRAMEWORK_APP_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: BOTFRAMEWORK_APP_ID
+      - name: BOTFRAMEWORK_APP_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: BOTFRAMEWORK_APP_PASSWORD
+      - name: BOTFRAMEWORK_AUTH_DISABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: BOTFRAMEWORK_AUTH_DISABLED
+      - name: FB_VERIFY_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: FB_VERIFY_TOKEN
+      - name: FB_PAGE_ACCESS_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: FB_PAGE_ACCESS_TOKEN
+      - name: SSO_AUTH_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: SSO_AUTH_ENABLED
+      - name: SSO_AUTH_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: SSO_AUTH_TENANT_ID
+      - name: SSO_AUTH_ADMIN_GROUP
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: SSO_AUTH_ADMIN_GROUP
+      - name: SSO_AUTH_ANALYST_GROUP
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: SSO_AUTH_ANALYST_GROUP
+      - name: SSO_AUTH_CACHE_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: SSO_AUTH_CACHE_ENABLED
+      - name: SSO_AUTH_CACHE_TTL_SECONDS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: SSO_AUTH_CACHE_TTL_SECONDS
+      - name: APP_VERSION_VIRTUAL_ASSISTANT
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: APP_VERSION_VIRTUAL_ASSISTANT
+      - name: GESTIONES_API_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: GESTIONES_API_BASE_URL
+      - name: TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: TENANT_ID
+      - name: OAUTH_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: OAUTH_CLIENT_ID
+      - name: OAUTH_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: OAUTH_CLIENT_SECRET 
+      - name: CONTACT_CENTER_HOURS_CHECK_ENABLE
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-preprod
+            key: CONTACT_CENTER_HOURS_CHECK_ENABLE 
+ 
+  livenessProbe:
+    enabled: true
+    path: /wsrestbotweb/healthz
+    port: 8000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+  readinessProbe:
+    enabled: true
+    path: /wsrestbotweb/healthz
+    port: 8000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+  # Config Volumen
+  volumeMounts: {}
+  extraVolumes: {}
+  ingress:
+    enabled: true
+    className: "alb"
+    name: "ingress-sip-preprod"
+    labels: {}
+    annotations:
+      kubernetes.io/ingress.class: "alb"
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-preprod
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: alb-eks-preprod
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      alb.ingress.kubernetes.io/enable-cors: "true"
+      alb.ingress.kubernetes.io/cors-allow-origin: "https://preprod.rentascordoba.gob.ar"
+      alb.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      alb.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      alb.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal-preprod.rentascordoba.gob.ar
+        paths:
+          - path: /wsrestbotweb
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrestbotweb-service
+                port:
+                  number: 80
+      - host: backend-cloud-preprod.rentascordoba.gob.ar
+        paths:
+          - path: /wsrestbotweb
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrestbotweb-service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: wsrestbotweb-service
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+    labels:
+      environment: preprod

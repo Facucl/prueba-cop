@@ -1,0 +1,86 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "ccfa-fe"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/ccfa-fe"
+    tag: release-0.0.4
+    pullPolicy: Always
+
+  # Namespace where release will be deployed
+  namespace: ccfa-fe-desa
+  clusterName: ccfa-fe
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "ClusterFirst"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+
+node:
+  api:
+    resources: 
+      limits:
+        cpu: 250m
+        memory: 512Mi
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      runAsGroup: 0
+      scc:
+        enabled : true
+        rootUser: true
+    envVars:
+      secretVars: {}
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: false
+      path: /healthcheck
+      port: api
+      failureThreshold: 30
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 1
+
+    readinessProbe:
+      enabled: false
+      path: /
+      port: 3000
+      failureThreshold: 3
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts: {}
+    extraVolumes: {}
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: "ccfa-fe.apps.apps.desa-rentas.gobiernocba.gov.ar"
+          paths:
+            - path: /
+              pathType: Prefix
+    service:
+      port: 80
+      targetPort: 80
+

@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Web-Front/frontend/micro/mf-impuestos-360.git
+  bucket_name: fe-mf-impuestos-360
+  context: mf-impuestos-360

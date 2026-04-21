@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Web-Front/frontend/micro/mf-declaraciones-juradas-360.git
+  bucket_name: fe-mf-declaraciones-juradas-360
+  context: mf-declaraciones-juradas-360

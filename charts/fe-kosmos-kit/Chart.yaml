@@ -1,0 +1,12 @@
+apiVersion: v2
+name: fe-kosmos-kit
+version: 0.0.1
+Appversion: latest
+description: >
+    This Chart is to deploy fe-kosmos-kit proyect based on NodeJS Helm chart.
+keywords:
+  - node
+dependencies:
+- name: node
+  version: 0.0.1
+  repository: "file://../node"

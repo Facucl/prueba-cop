@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: neurusrasaeks Helm Chart
+name: neurusrasaeks
+version: 0.0.1
+keywords:
+  - neurusrasaeks

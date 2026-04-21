@@ -1,0 +1,309 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  description: | 
+    This pipeline clones a git repo, then echoes the README file to the stdout.
+  params:
+  - name: git-repo-source-url
+    type: string
+    description: The git repo URL to clone from.
+  - name: git-repo-source-revision
+    description: The git branch where to clone from.
+  - name: ecr-registry
+    type: string
+    description: ECR Registry URL where to push the image
+  - name: ecr-repository
+    type: string
+    description: ECR Repository where to push the image
+  - name: tag-name
+    type: string
+    description: Image tag
+  - name: project-id
+    type: string
+    description: project id repo
+  - name: deploy-to
+    type: string
+    description: environments where to deploy the new release
+  - name: build-context
+    type: string
+    description: environment where to build the image for genexus applications
+  workspaces:
+  - name: git-basic-auth
+    description: |
+      This workspace contains basic auth configuration to be used by git-clone
+  - name: aws-credentials
+    description: |
+      This workspace contains the aws credentials to authenticate to ECR
+  - name: source-dir
+    description: | 
+      This workspace contains the cloned repo files, so they can be read by the
+      next task.
+
+
+  tasks:
+  #############################
+  # CHECK DEPLOYMENT AVAILABILITY BACKENDS
+  #############################
+
+    - name: check-deployment-availability
+      params:
+        - name: deploy-to
+          value: $(params.deploy-to)
+      taskSpec:
+        params:
+          - name: deploy-to
+            type: string
+        steps:
+        - name: check-build-context
+          image: registry-sip.cba.gov.ar:5000/curlimages:latest
+          script: |
+            #!/bin/sh -xe
+            echo "Contexto= $(params.deploy-to)"
+            if [ "$(params.deploy-to)" == "prod" ]; then
+              result=$(curl -sSf https://can-i-deploy.rentasweb.gob.ar/despliegue)
+              if [ "$result" == "OK" ]; then
+                echo "Se puede desplegar en este momento"
+              else
+                echo "No se puede desplegar en este momento"
+                exit 1
+              fi
+            else
+              echo "No se esta ejecutando un deploy en PROD, no es necesario validar contra CAN I DEPLOY"
+            fi
+
+###############
+  # GET BRANCH NAME FROM TAG
+  ###############
+    - name: get-branch-name
+      params:
+        - name: revision
+          value: $(params.git-repo-source-revision)
+        - name: project-id
+          value: $(params.project-id)  
+      taskSpec:
+        results:
+          - name: branch-name
+            description: "Nombre de la rama de donde se saca tag"
+        params:
+          - name: revision
+            type: string
+          - name: project-id
+            description: "project id de GitLab"  
+        steps:
+        - name: fetch-branch-from-tag
+          image: registry-sip.cba.gov.ar:5000/curl-jq:0.1
+          env:
+          - name: TOKEN_GIT
+            valueFrom:
+              secretKeyRef:
+                name: token-credential-gitlab
+                key: TOKEN_GIT
+          script: |
+            # Obtener el nombre del tag desde el parámetro
+            TAG_NAME="$(params.revision)"
+            
+            # Obtener información del tag desde GitLab API
+            RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN_GIT" \
+              "https://git.rentasweb.gob.ar/api/v4/projects/$(params.project-id)/repository/tags/$TAG_NAME")
+            
+            # Extraer el commit ID del JSON de respuesta
+            COMMIT_ID=$(echo $RESPONSE | jq -r '.commit.id')
+            
+            # Hacer una solicitud a la API de GitLab para buscar la rama que contiene el commit
+            BRANCH_NAME=$(curl -s -H "Authorization: Bearer $TOKEN_GIT" \
+              "https://git.rentasweb.gob.ar/api/v4/projects/$(params.project-id)/repository/branches" | \
+              jq -r --arg COMMIT_ID "$COMMIT_ID" '.[] | select(.commit.id == $COMMIT_ID) | .name')
+            
+            # Verificar si se encontró la rama
+            if [ -z "$BRANCH_NAME" ]; then
+              echo "No se pudo encontrar la rama de origen para el commit $COMMIT_ID"
+              exit 1
+            fi
+            
+            # Imprimir la rama y guardarla en un resultado para la siguiente tarea
+            echo "La rama de donde se sacó el tag $TAG_NAME: $BRANCH_NAME"
+            echo "$BRANCH_NAME" > $(results.branch-name.path)
+
+  ###############
+  # GITLAB-CI
+  ############### 
+    - name: trigger-ci
+      runAfter: ["get-branch-name"]
+      params:
+        - name: branch-name
+          value: "$(tasks.get-branch-name.results.branch-name)"
+        - name: project-id
+          value: $(params.project-id)
+      taskSpec:
+        params:
+        - name: branch-name
+          description: "branch name"
+        - name: project-id
+          description: "project id de GitLab"
+        results:
+          - name: pipeline-id
+            description: "ID del pipeline de GitLab"
+        steps:
+        - name: start-job-ci
+          image: registry-sip.cba.gov.ar:5000/curl-jq:0.1
+          env:
+          - name: TOKEN_GIT
+            valueFrom:
+              secretKeyRef:
+                name: token-credential-gitlab
+                key: TOKEN_GIT
+          script: |
+            BRANCH_NAME=$(params.branch-name)
+            # Desencadenar el pipeline de GitLab CI mediante la API
+            RESPONSE=$(curl -X POST -H "Authorization: Bearer $TOKEN_GIT" \
+              "https://git.rentasweb.gob.ar/api/v4/projects/$(params.project-id)/pipeline?ref=$BRANCH_NAME")
+            
+            # Verificar si se lanzó correctamente
+            echo "Pipeline response: $RESPONSE"
+            PIPELINE_ID=$(echo $RESPONSE | jq -r '.id')
+     
+            if [ "$PIPELINE_ID" == "null" ]; then
+              echo "Error al lanzar el pipeline de GitLab CI"
+              exit 1
+            fi
+            echo "$PIPELINE_ID" > $(results.pipeline-id.path)
+
+  ###############
+  # STASTUS GITLAB-CI
+  ############### 
+    
+    - name: monitor-ci
+      runAfter: ["trigger-ci"]
+      params:
+        - name: pipeline-id
+          value: "$(tasks.trigger-ci.results.pipeline-id)"
+        - name: project-id
+          value: $(params.project-id)
+      taskSpec:
+        params:
+          - name: pipeline-id
+            description: "ID del pipeline de GitLab"
+          - name: project-id
+            description: "project id de GitLab"
+        steps:
+        - name:
+          image: registry-sip.cba.gov.ar:5000/curl-jq:0.1
+          env:
+          - name: TOKEN_GIT
+            valueFrom:
+              secretKeyRef:
+                name: token-credential-gitlab
+                key: TOKEN_GIT
+          script: |
+            PIPELINE_ID=$(params.pipeline-id)
+            # Polling para monitorear el estado del pipeline
+            STATUS="running"
+            while [ "$STATUS" == "running" ] || [ "$STATUS" == "pending" ]; do
+              sleep 15
+              STATUS=$(curl -s -H "Authorization: Bearer $TOKEN_GIT" \
+                "https://git.rentasweb.gob.ar/api/v4/projects/$(params.project-id)/pipelines/$PIPELINE_ID" | jq -r '.status')
+              echo "Estado de el pipeline de Gitlab CI: $STATUS"
+            done
+    
+            if [ "$STATUS" != "success" ]; then
+              echo "El pipeline de GitLab CI falló"
+              exit 1
+            fi
+
+
+
+      
+
+
+        
+  ###############
+  # GIT CLONE 
+  ###############   
+    - name: git-clone
+      runAfter: ["monitor-ci"]
+      taskRef:
+        name: tekton-git-clone
+        kind: ClusterTask    
+      params:
+        - name: url
+          value: $(params.git-repo-source-url)
+        - name: revision
+          value: $(params.git-repo-source-revision)
+      workspaces:
+        - name: output
+          workspace: source-dir
+        - name: basic-auth
+          workspace: git-basic-auth  
+
+  ###############
+  # KANIKO BUILD
+  ###############
+    - name: build-push-kaniko
+      runAfter: ["git-clone"]
+      taskRef:
+        name: kaniko
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: source-dir
+        - name: aws-credentials
+          workspace: aws-credentials            
+      params:
+        - name: IMAGE
+          value: "$(params.ecr-registry)/$(params.ecr-repository):$(params.tag-name)" 
+        - name: EXTRA_ARGS
+          value: [ '--build-arg' , 'BUILD_CONTEXT=$(params.build-context)' , '--build-arg' , "HTTPS_PROXY=http://proxysrv.gobiernocba.gov.ar:8080", '--build-arg' , "GOB_PROXY=http://proxysrv.gobiernocba.gov.ar:8080", '--build-arg' , 'TAG_NAME=$(params.tag-name)']
+          
+   
+  ######################
+  # Update deploy values 
+  ######################
+    - name: git-cli
+      runAfter: ["build-push-kaniko"]
+      taskRef:
+        name: git-cli
+        kind: ClusterTask
+      params:
+        - name: GIT_USER_NAME
+          value: tekton 
+        - name: GIT_USER_EMAIL
+          value: tekton@kolektor.com.ar
+        - name: GIT_SCRIPT
+          value: |
+            if [ ! -z "$(params.deploy-to)" ]; then
+              echo "[INFO] Automatic deploy to $(params.deploy-to) started"
+              git clone https://git.rentasweb.gob.ar/DevOps/helm-charts.git
+              cd helm-charts/charts/$(params.ecr-repository)
+              ENVS=$(echo $(params.deploy-to) | sed -e 's/^[ \t]*//' | sed 's/ /|/g')
+              function replace_tag() {
+                if echo "$(params.tag-name)" | grep -Eq "_feature$"; then
+                    if [ "$ENVS" == "preprod" ]; then
+                        sed -i "s/tag:.*/tag: $(params.tag-name)/g" values-feature-preprod.yaml
+                    elif [ "$ENVS" == "desa" ]; then
+                        sed -i "s/tag:.*/tag: $(params.tag-name)/g" values-feature-desa.yaml
+                    elif [ "$ENVS" == "test" ]; then
+                        sed -i "s/tag:.*/tag: $(params.tag-name)/g" values-feature-test.yaml
+                    else
+                        sed -i "s/tag:.*/tag: $(params.tag-name)/g" "$1"
+                    fi
+                else
+                    sed -i "s/tag:.*/tag: $(params.tag-name)/g" "$1"
+                fi
+              }
+              for file in $(ls | grep -E -e "values-(${ENVS}).*\.yaml"); do
+                replace_tag "$file"
+              done
+              git add -A
+              git commit -m "chore: pipeline update image tag to $(params.tag-name)"
+              git push origin master
+            else
+              echo "[INFO] Automatic deploy not requested"
+            fi
+      workspaces:
+        - name: source
+          workspace: source-dir
+        - name: basic-auth
+          workspace: git-basic-auth
+          #$(ls | grep -E -e "values-(${ENVS}).*\.yaml")

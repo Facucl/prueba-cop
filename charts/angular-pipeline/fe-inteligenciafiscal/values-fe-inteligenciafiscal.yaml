@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/InteligenciaFiscal/fe_inteligencia_fiscal.git
+  bucket_name: fe-inteligencia-fiscal
+  context: inteligencia-fiscal

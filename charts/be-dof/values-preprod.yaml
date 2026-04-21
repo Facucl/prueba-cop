@@ -1,0 +1,255 @@
+global:
+  enabled: true
+  projectName: be-dof
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/be-dof
+    tag: release-0.0.43
+    pullPolicy: IfNotPresent
+  namespace: be-dof-preprod
+  clusterName: eks-preprod-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+nodeeks:
+  api:
+    enabled: true
+    resources:
+
+      limits:
+        cpu: 1000m
+        memory: 1100Mi
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: PREPROD
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: '8080'
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "3000"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires		
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: DB_PORT
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: DB_USER
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: DB_PASSWORD
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: DB_HOST
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: DB_NAME
+      - name: AZURE_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: AZURE_TENANT_ID
+      - name: AZURE_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: AZURE_CLIENT_ID
+      - name: AZURE_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: AZURE_CLIENT_SECRET
+      - name: AZURE_REDIRECT_URI
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: AZURE_REDIRECT_URI
+      - name: AZURE_SCOPES
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: AZURE_SCOPES
+      - name: NODE_ENV
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: NODE_ENV
+      - name: PGSSLMODE
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: PGSSLMODE
+      - name: ENVIRONMENT
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: ENVIRONMENT
+      - name: ALLOW_ANONYMOUS_AUTH
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: ALLOW_ANONYMOUS_AUTH
+      - name: GALILEO_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_BASE_URL
+      - name: GALILEO_CONFIG_NAME
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_CONFIG_NAME
+      - name: GALILEO_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_CLIENT_ID
+      - name: GALILEO_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_CLIENT_SECRET
+      - name: GALILEO_TOKEN_URL
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_TOKEN_URL
+      - name: GALILEO_OAUTH_TOKEN_URL
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_OAUTH_TOKEN_URL
+      - name: GALILEO_OAUTH_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_OAUTH_USERNAME
+      - name: GALILEO_OAUTH_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_OAUTH_PASSWORD
+      - name: GALILEO_OAUTH_FROM
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_OAUTH_FROM
+      - name: GALILEO_OAUTH_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_OAUTH_CLIENT_ID
+      - name: GALILEO_OAUTH_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_OAUTH_CLIENT_SECRET
+      - name: GALILEO_PRESIGNED_QUERY_CONTENT_TYPE
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_PRESIGNED_QUERY_CONTENT_TYPE
+      - name: GALILEO_SECURED_URL_CONTENT_TYPE
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_SECURED_URL_CONTENT_TYPE
+      - name: GALILEO_SUBFOLDER_TEMPLATE
+        valueFrom:
+          secretKeyRef:
+            name: be-dof-secret
+            key: GALILEO_SUBFOLDER_TEMPLATE
+  livenessProbe:
+    enabled: false
+    path: /be-dof/api/health
+    port: 3000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+  readinessProbe:
+    enabled: false
+    path: /be-dof/api/health
+    port: 3000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+  # Config Volumen
+  volumeMounts: {}
+  extraVolumes: {}
+  ingress:
+    enabled: true
+    className: "alb"
+    name: "ingress-sip-preprod"
+    labels: {}
+    annotations:
+      kubernetes.io/ingress.class: "alb"
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-preprod
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/b1554377-14a0-45b1-b6d4-59822faf5e5c
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/group.name: alb-eks-preprod
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      alb.ingress.kubernetes.io/enable-cors: "true"
+      alb.ingress.kubernetes.io/cors-allow-origin: "https://preprod.rentascordoba.gob.ar"
+      alb.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      alb.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      alb.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal-preprod.inteligenciafiscal.gob.ar
+        paths:
+          - path: /be-dof
+            pathType: Prefix
+            backend:
+              service: 
+                name: be-dof
+                port:
+                  number: 80
+      - host: backend-cloud-preprod.inteligenciafiscal.gob.ar
+        paths:
+          - path: /be-dof
+            pathType: Prefix
+            backend:
+              service: 
+                name: be-dof
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: be-dof
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+    labels:
+      environment: preprod

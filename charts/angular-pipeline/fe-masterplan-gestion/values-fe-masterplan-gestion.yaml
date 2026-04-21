@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/masterplan/frontend/fe-masterplan-gestion.git
+  bucket_name: fe-masterplan-gestion
+  context: master-plan-gestion

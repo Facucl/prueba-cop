@@ -1,0 +1,127 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "wsresttributario"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/wsresttributario"
+    tag: release-0.0.181
+    pullPolicy: IfNotPresent
+
+  # Namespace where release will be deployed
+  namespace: wsresttributario-preprod
+  clusterName: preprod-rentas
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "None"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+
+java:
+
+  api:
+    resources: 
+      requests:
+        cpu: 500m
+        memory: 1100Mi
+      limits:
+        cpu: 1000m
+        memory: 1100Mi
+
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      scc:
+        enabled : true
+        rootUser: false
+
+    env: 
+      - name: RUNTIME_ENVIRONMENT
+        value: PREPROD
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: '8080'
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PERM_SIZE
+        value: 256m
+      - name: MAX_PERM_SIZE
+        value: 256m
+      - name: XMS
+        value: 1024m
+      - name: XMX
+        value: 1024m
+      - name: AFIPCACERTS
+        value: /tmp/cacerts/afip.pem
+    envVars:
+      secretVars:
+        - name: ptax-db 
+        - name: logging-level-config
+        - name: dbcredentials-wsresttributario-preprod
+        - name: authcredentials-wsresttributario-preprod
+        - name: afipcredentials-wsresttributario-preprod
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: true
+      path: /WSRestTributario/healthz
+      port: 8080
+      failureThreshold: 3
+      initialDelaySeconds: 150
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: true
+      path: /WSRestTributario/healthz
+      port: 8080
+      failureThreshold: 3
+      initialDelaySeconds: 150
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts: 
+      - mountPath: /tmp/cacerts/DGCIT_Root_CA.crt
+        name: dgcit-root-ca
+        subPath: DGCIT_Root_CA.crt
+      - mountPath: /tmp/cacerts/afip.pem
+        name: afip-cert-secret
+        subPath: afip.pem    
+    extraVolumes:
+      - name: dgcit-root-ca
+        type: secret
+        secretName: dgcit-root-ca
+      - name: afip-cert-secret
+        type: secret
+        secretName: afip-cert-secret
+        
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: apps.apps.preprod-rentas-os.gobiernocba.gov.ar
+          paths:
+            - path: /WSRestTributario/
+              pathType: Prefix

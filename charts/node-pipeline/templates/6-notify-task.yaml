@@ -1,0 +1,108 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: {{ .Release.Name }}-notify-deploy
+  labels:
+    app: deploy-notify-bot
+spec:
+  description: |
+    Notifica a Microsoft Teams el resultado de un despliegue de fixes de
+    seguridad. Corre en el `finally` del pipeline para poder observar el
+    estado agregado ($(tasks.status)) aun cuando una task previa haya fallado.
+
+  params:
+    - name: service
+      type: string
+      description: Nombre del servicio (= ecr-repository)
+    - name: branch
+      type: string
+      description: |
+        Rama donde vive el commit del tag. Por ahora fijo en "master" —
+        TODO: deducirla con `git branch -r --contains $SHA` en el futuro.
+      default: "master"
+    - name: release
+      type: string
+      description: Tag/release desplegado (= tag-name)
+    - name: envs
+      type: string
+      description: Ambientes solicitados, separados por espacio (= deploy-to)
+    - name: pipeline-status
+      type: string
+      description: Estado agregado del pipeline (Succeeded/Failed/Completed/None)
+    - name: bot-image
+      type: string
+      description: Imagen del bot (incluye tag/digest)
+      default: registry-sip.cba.gov.ar:5000/deploy-notify-bot:latest
+    - name: argo-namespace
+      type: string
+      default: openshift-gitops
+    - name: argo-app-pattern
+      type: string
+      description: Patrón para armar el nombre de la Application en Argo
+      default: "{service}-{env}"
+    - name: poll-interval
+      type: string
+      default: "15s"
+    - name: poll-timeout
+      type: string
+      default: "15m"
+
+  workspaces:
+    - name: source
+      description: |
+        El workspace source-dir del pipeline, para leer el commit message desde
+        el repo ya clonado por git-clone.
+
+  steps:
+    - name: read-commit-message
+      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/usr/bin/env bash
+        set -eu
+        if [ -d .git ]; then
+          git log -1 --format=%B > /tekton/home/commit-message.txt
+        else
+          : > /tekton/home/commit-message.txt
+        fi
+
+    - name: notify
+      image: $(params.bot-image)
+      env:
+        - name: SERVICE
+          value: "$(params.service)"
+        - name: BRANCH
+          value: "$(params.branch)"
+        - name: TAG
+          value: "$(params.release)"
+        - name: ENVS
+          value: "$(params.envs)"
+        - name: PIPELINE_STATUS
+          value: "$(params.pipeline-status)"
+        - name: ARGO_NAMESPACE
+          value: "$(params.argo-namespace)"
+        - name: ARGO_APP_PATTERN
+          value: "$(params.argo-app-pattern)"
+        - name: POLL_INTERVAL
+          value: "$(params.poll-interval)"
+        - name: POLL_TIMEOUT
+          value: "$(params.poll-timeout)"
+        - name: COMMIT_MESSAGE_FILE
+          value: /tekton/home/commit-message.txt
+        - name: TEAMS_WEBHOOK_URL
+          valueFrom:
+            secretKeyRef:
+              name: deploy-notify-bot-teams
+              key: webhook-url
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          export COMMIT_MESSAGE="$(cat "$COMMIT_MESSAGE_FILE" 2>/dev/null || true)"
+          exec /bot
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi

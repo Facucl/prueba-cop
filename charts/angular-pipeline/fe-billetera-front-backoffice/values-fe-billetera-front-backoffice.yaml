@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/billetera/front-backoffice.git
+  bucket_name: fe-billetera-front-backoffice
+  context: billetera-cidi-backoffice

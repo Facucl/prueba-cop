@@ -1,0 +1,259 @@
+global:
+  enabled: true
+  projectName: wsrestgalileo-eks-prod
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/wsrestgalileo-eks
+    tag: release-3.1.4_eks
+    pullPolicy: IfNotPresent
+  namespace: wsrestgalileo-eks-prod
+  clusterName: eks-prod-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+javaeks:
+  api:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1100Mi
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 2
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: PROD
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: "8080"
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "3000"
+      - name: PERM_SIZE
+        value: 256m
+      - name: MAX_PERM_SIZE
+        value: 256m
+      - name: XMS
+        value: 1024m
+      - name: XMX
+        value: 1024m
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: PTAXURL
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: PTAXURL
+      - name: PTAX1
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: PTAX1
+      - name: PTAX2
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: PTAX2
+      - name: BD
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: BD
+      - name: USERDB
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: USERDB
+      - name: USERPASS
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: USERPASS
+      - name: MORE1
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: MORE1
+      - name: MORE2
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: MORE2
+      - name: MOREURL
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: MOREURL
+      - name: RENTAS1
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: RENTAS1
+      - name: RENTAS2
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: RENTAS2
+      - name: RENTASURL
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: RENTASURL
+      - name: RENTASDBURL
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: RENTASDBURL
+      - name: RENTASDB1
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: RENTASDB1
+      - name: RENTASDB2
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: RENTASDB2
+      - name: OAUTH_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: OAUTH_TOKEN
+      - name: OAUTH_USER
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: OAUTH_USER
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: AWS_ACCESS_KEY_ID
+      - name: AWS_REGION
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: AWS_REGION
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: AWS_SECRET_ACCESS_KEY
+      - name: CORS_DOMAIN
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: CORS_DOMAIN
+      - name: PFISCAL1
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: PFISCAL1
+      - name: PFISCAL2
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: PFISCAL2
+      - name: PFISCALURL
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: PFISCALURL
+      - name: INFRA_ENVIRONMENT
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: INFRA_ENVIRONMENT
+      - name: JNDI_NAME
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrestgalileo-eks-prod
+            key: JNDI_NAME
+
+  livenessProbe:
+    enabled: true
+    path: /WSRestGalileo/healthz
+    port: 8080
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: true
+    path: /WSRestGalileo/healthz
+    port: 8080
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  volumeMounts: {}
+  extraVolumes: {}
+
+  ingress:
+    enabled: true
+    className: alb
+    name: ingress-sip-prod
+    labels: {}
+    annotations:
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-prod
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: alb-eks-prod
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/cors-allow-origin: "https://rentascordoba.gob.ar"
+      nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal.rentascordoba.gob.ar
+        paths:
+          - path: /WSRestGalileo
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrestgalileo-eks-service
+                port:
+                  number: 80
+      - host: backend-cloud.rentascordoba.gob.ar
+        paths:
+          - path: /WSRestGalileo
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrestgalileo-eks-service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: wsrestgalileo-eks-service
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+    labels:
+      environment: prod

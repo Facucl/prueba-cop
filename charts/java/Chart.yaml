@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: Java Helm Chart
+name: java
+version: 0.0.1
+keywords:
+  - java

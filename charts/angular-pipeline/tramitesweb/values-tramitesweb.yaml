@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/rentas-tramites-angular/tramitesweb
+  bucket_name: fe-tramites-web
+  context: tramiteweb

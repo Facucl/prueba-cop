@@ -1,0 +1,13 @@
+apiVersion: v2
+name: backendinteligenciafiscal
+version: 0.0.1
+Appversion: latest
+description: >
+    This Chart is to deploy the backend of InteligenciaFiscal proyect based on NetCore Helm chart.
+keywords:
+  - netcore
+dependencies:
+- name: netcore
+  version: 0.0.1
+  # repository: "http://--/"
+  repository: "file://../net-core"

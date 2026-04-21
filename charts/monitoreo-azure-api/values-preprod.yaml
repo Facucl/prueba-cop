@@ -1,0 +1,140 @@
+global:
+  enabled: true
+  projectName: monitoreo-azure-api
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/monitoreo-azure-api
+    tag: release-1.0.2
+    pullPolicy: IfNotPresent
+  namespace: monitoreo-azure-api-preprod
+  clusterName: eks-preprod-rentas
+  dnsPolicy: "ClusterFirst"
+
+
+pythoneks:
+  api:
+    enabled: true
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2048Mi
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+    env:
+      # --- Entorno de ejecución ---
+      # Selecciona el Pushgateway de destino: PROD usa PUSHGATEWAY_URL_PROD, cualquier
+      # otro valor usa PUSHGATEWAY_URL_DEFAULT (ver push_gw_writer.py).
+      - name: RUNTIME_ENVIRONMENT
+        value: PREPROD
+
+      # --- Logging ---
+      # Nivel de log de la aplicación Flask.
+      # Valores válidos: DEBUG, INFO, WARNING, ERROR, CRITICAL
+      - name: LOG_LEVEL
+        value: WARNING
+
+      # --- Timezone ---
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+
+      # --- Puerto de la aplicación Flask ---
+      # El servidor Flask escucha en el puerto 5000 (ver app.py: app.run(host="0.0.0.0")).
+      # Las probes y el targetPort del Service deben coincidir con este valor.
+      - name: PORT
+        value: "5000"
+
+
+      # --- Proyectos válidos (datos.py: PROJECTS_API_URL) ---
+      # URL del servicio que devuelve la lista de proyectos aceptados como JSON array.
+      # Default en código: https://appwebmonitoreo-aws.rentasweb.gob.ar:8989/v1/projects/
+      - name: PROJECTS_API_URL
+        value: "https://appwebmonitoreo-aws-internal.rentasweb.gob.ar:8989/v1/projects/"
+
+      # TTL del caché de proyectos en segundos (datos.py: PROJECTS_CACHE_TTL_SECONDS).
+      # Default en código: 300
+      - name: PROJECTS_CACHE_TTL_SECONDS
+        value: "300"
+
+      # --- Pushgateways (datos.py) ---
+      # PUSHGATEWAY_URL_PROD: usado cuando RUNTIME_ENVIRONMENT == "PROD"
+      - name: PUSHGATEWAY_URL_PROD
+        value: "https://pushgateway-monitoreo-azure-8-5-internal.rentasweb.gob.ar:8100"
+
+      # PUSHGATEWAY_URL_DEFAULT: usado para PREPROD y cualquier otro entorno
+      - name: PUSHGATEWAY_URL_DEFAULT
+        value: "https://pushgateway-monitoreo-azure-8-5-internal.rentasweb.gob.ar:8100"
+
+    livenessProbe:
+      enabled: true
+      path: /healthz      # Endpoint definido en app.py → retorna "ok" 200
+      port: 5000
+      scheme: HTTP
+      failureThreshold: 3
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: true
+      path: /healthz
+      port: 5000
+      scheme: HTTP
+      failureThreshold: 3
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+  volumeMounts: {}
+  extraVolumes: {}
+
+  ingress:
+    enabled: true
+    className: "alb"
+    name: "ingress-sip-preprod"
+    labels: {}
+    annotations:
+      kubernetes.io/ingress.class: "alb"
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-preprod
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: alb-eks-preprod
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      alb.ingress.kubernetes.io/enable-cors: "true"
+      alb.ingress.kubernetes.io/cors-allow-origin: "https://preprod.rentascordoba.gob.ar"
+      alb.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      alb.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      alb.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: monitoreo-azure-api-preprod.rentascordoba.gob.ar
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: service
+    type: ClusterIP
+    port: 80
+    targetPort: 5000    # Puerto donde Flask escucha (app.py: app.run(host="0.0.0.0"))
+    labels:
+      environment: preprod
+ 

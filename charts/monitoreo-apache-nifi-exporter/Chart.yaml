@@ -1,0 +1,12 @@
+apiVersion: v2
+name: monitoreo-apache-nifi-exporter
+version: 0.0.1
+description: >
+  This Chart is to deploy monitoreo-apache-nifi-exporter proyect based on Python Helm chart.
+keywords:
+  - python
+dependencies:
+  - name: python
+    version: 0.0.1
+    # repository: "http://--/"
+    repository: "file://../python"

@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Web-Front/fe-mantenimiento.git
+  bucket_name: fe-mantenimiento
+  context: mantenimiento

@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: Valkey Helm Chart
+name: valkey
+version: 0.0.1
+keywords:
+  - valkey

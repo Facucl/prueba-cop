@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/masterplan/backend/WSRest/wsrest-masterplan-debito.git
+  ecr_registry: 634937925704.dkr.ecr.us-west-2.amazonaws.com
+  ecr_repository: wsrest-masterplan-debito

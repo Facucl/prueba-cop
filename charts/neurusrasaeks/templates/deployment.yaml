@@ -1,0 +1,89 @@
+{{- if and .Values.api.enabled .Values.global.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.global.projectName }}-app
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.global.projectName }}-app
+spec:
+  {{- if not .Values.api.hpa.enabled }}
+  replicas: {{ .Values.api.replicas | default 1 }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.api.revisionHistoryLimit | default 3 }}
+  selector:
+    matchLabels:
+       app: {{ .Values.global.projectName }}-app
+  template:
+    metadata:
+      labels:
+         app: {{ .Values.global.projectName }}-app
+    spec:
+      dnsPolicy: {{ .Values.global.dnsPolicy }}
+      
+      {{- with .Values.api.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+        - name: {{ .Values.global.projectName }}-app
+          image: "{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          {{- if .Values.api.args }}
+          args:
+            {{- range .Values.api.args }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort | default 5005 }}
+          resources:
+            requests:
+              cpu: {{ .Values.api.resources.requests.cpu }}
+              memory: {{ .Values.api.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.api.resources.limits.cpu }}
+              memory: {{ .Values.api.resources.limits.memory }}
+          env:
+            {{- range .Values.api.env }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: "{{ .value }}"
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .valueFrom.secretKeyRef.name }}
+                  key: {{ .valueFrom.secretKeyRef.key }}
+              {{- end }}
+            {{- end }}
+          volumeMounts:
+            {{- range .Values.api.volumeMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+              subPath: {{ .subPath }}
+            {{- end }}
+          # Fragmento corregido de deployment.yaml
+          {{- if .Values.api.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.api.livenessProbe.path | default "/" }}
+              port: {{ .Values.api.livenessProbe.port | default 5005 }}
+            initialDelaySeconds: {{ .Values.api.livenessProbe.initialDelaySeconds | default 30 }}
+            periodSeconds: {{ .Values.api.livenessProbe.periodSeconds | default 20 }}
+            failureThreshold: {{ .Values.api.livenessProbe.failureThreshold | default 3 }}
+          {{- end }}
+          {{- if .Values.api.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.api.readinessProbe.path | default "/" }}
+              port: {{ .Values.api.readinessProbe.port | default 5005 }}
+            initialDelaySeconds: {{ .Values.api.readinessProbe.initialDelaySeconds | default 30 }}
+            periodSeconds: {{ .Values.api.readinessProbe.periodSeconds | default 10 }}
+            failureThreshold: {{ .Values.api.readinessProbe.failureThreshold | default 3 }}
+          {{- end }}
+{{- end }}

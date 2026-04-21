@@ -1,0 +1,6 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/copernico/pcs-saldo-tool.git
+  ecr_registry: registry-sip.cba.gov.ar:5000
+  ecr_repository: pcs-saldo-tool-cop
+  sbt_cmd: boot/docker:stage
+  dockerfile_path: ./Dockerfile

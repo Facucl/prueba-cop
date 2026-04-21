@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Web-Front/kolektor-home
+  bucket_name: fe-rentas-home
+  context: inicio

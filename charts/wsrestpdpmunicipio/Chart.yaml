@@ -1,0 +1,13 @@
+apiVersion: v2
+name: wsrestpdpmunicipio
+version: 0.0.1
+Appversion: latest
+description: >
+    This Chart is to deploy wsrestpdpmunicipio proyect based on java Helm chart.
+keywords:
+  - java
+dependencies:
+- name: java
+  version: 0.0.1
+  # repository: "http://--/" #TEST commits
+  repository: "file://../java"

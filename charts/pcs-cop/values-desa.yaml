@@ -1,0 +1,208 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "pcs-cop"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/pcs-cop"
+    tag: release-pcs-0.3.11
+    pullPolicy: Always
+
+  # Namespace where release will be deployed
+  namespace: pcs-cop-desa
+  clusterName: desa-pcs-cop
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "ClusterFirst"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+#  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+
+scala:
+  api:
+    resources: 
+      limits:
+        cpu: "3"
+        memory: 6144Mi
+
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 3
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    rbac:
+      clusterRole: true
+      reader: true
+      serviceAccount: true
+
+    securityContext:
+      enabled: true
+      runAsUser: 1000
+      runAsGroup: 1000      
+      scc:
+        enabled : true
+        rootUser: true
+    extraLabels:
+      app: pcs 
+
+    ports:
+      - containerPort: 9091
+        name: monitoring       
+      - containerPort: 9095
+        name: monitor        
+      - containerPort: 2551
+        name: remoting        
+      - containerPort: 8001
+        name: api        
+      - containerPort: 8558
+        name: management      
+      - containerPort: 9089
+        name: cassandra
+    env:
+      - name: POD_NAMESPACE
+        podInfo: metadata.namespace
+      - name: CLUSTER_IP
+        podInfo: status.podIP
+      - name: JAVA_OPTS
+        value: -Xmx4G -Xms2G -XX:MaxRAMPercentage=85 -XX:MaxGCPauseMillis=500
+      - name: MAX_CONCURRENT_REQUESTS
+        value: "16384"
+      - name: MAX_REQUESTS_PER_CONNECTION
+        value: "2048"
+      - name: POOL_LOCAL_SIZE
+        value: "8"
+      - name: POOL_REMOTE_SIZE
+        value: "1"
+    envVars:
+      secretVars:
+        - name: pcs-cassandra-secret
+        - name: pcs-config-secret
+
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: true
+      path: /alive
+      port: 8558
+      failureThreshold: 10
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 10
+    lifecycle:
+      postStart:
+        command: curl --retry 10000 -f --retry-all-errors --retry-delay 5 -X POST http://localhost:8001/kafka/start &
+      preStop:
+        command: ' while curl -X POST http://localhost:8001/api/system/shutdown; do sleep 10; done'
+    readinessProbe:
+      enabled: true
+      path: /ready
+      port: 8558
+      failureThreshold: 10
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 10
+
+    volumeMounts: 
+      - mountPath: /opt/docker/bin/objeto_cupon.dmn
+        name: objeto-cupon
+        subPath: objeto_cupon.dmn
+        readOnly: true
+        
+      - mountPath: /opt/docker/bin/decision_30_descuento.dmn
+        name: decision-treinta-descuento
+        subPath: decision_30_descuento.dmn
+        readOnly: true 
+        
+      - mountPath: /opt/docker/bin/clasificacion_objeto.dmn
+        name: clasificacion-objeto
+        subPath: clasificacion_objeto.dmn
+        readOnly: true  
+
+    extraVolumes:
+      - name: objeto-cupon
+        type: configMap
+        configMapName: objeto-cupon
+        defaultMode: 420
+        
+      - name: decision-treinta-descuento
+        type: configMap
+        configMapName: decision-treinta-descuento
+        defaultMode: 420
+        
+      - name: clasificacion-objeto
+        type: configMap
+        configMapName: clasificacion-objeto
+        defaultMode: 420  
+
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: "copernico-pcs-rentas.apps.apps.desa-rentas.gobiernocba.gov.ar"
+          paths:
+            - path: /state
+              pathType: Prefix
+    service:
+      name: pcs-monitor
+      port: 8001
+      enabled: true
+      serviceName:
+        - enabled: true
+          type: ClusterIP
+          name: pcs-monitor
+          ports:
+            - port: 9091
+              portName: monitoring
+              targetPort: 9091
+            - port: 9095
+              portName: monitor
+              targetPort: 9095
+            - port: 9089
+              portName: cassandra
+              targetPort: 9089
+            - port: 8001
+              portName: api
+              targetPort: 8001
+        - enabled: true
+          type: NodePort
+          name: pcs-cluster
+          ports:
+            - port: 8001        
+              portName: api
+              targetPort: 8001  
+######### service monitor ######                    
+    serviceMonitor:
+      enabled:  true
+      selector:
+        - port: monitoring
+          interval: 10s
+          honorLabels: true
+          path: /metrics
+        - port: monitor
+        - port: api
+          interval: 10s
+          honorLabels: true
+          path: /state/sujeto
+    #      interval: 10s
+    #      honorLabels: true
+    #      path: /metrics
+    #    - port: cassandra
+    #      interval: 10s
+    #      honorLabels: true
+    #      path: /metrics
+

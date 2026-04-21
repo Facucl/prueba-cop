@@ -1,0 +1,8 @@
+apiVersion: v2
+name: monitoreo-azure-api
+version: 0.0.1
+dependencies:
+- name: pythoneks
+  version: 0.0.1
+  # repository: "http://--/"
+  repository: "file://../pythoneks"

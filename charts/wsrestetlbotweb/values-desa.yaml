@@ -1,0 +1,274 @@
+global:
+  enabled: true
+  projectName: wsrestetlbotweb
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/wsrestetlbotweb
+    tag: release-0.0.026
+    pullPolicy: IfNotPresent
+  namespace: wsrestetlbotweb-desa
+  clusterName: eks-desa-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+nodeeks:
+  api:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1100Mi
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: DESA
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: "8080"
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "8080"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: AWS_ACCESS_KEY_ID
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: AWS_SECRET_ACCESS_KEY
+      - name: APP_ENV
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: APP_ENV
+      - name: APP_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: APP_PASSWORD
+      - name: APP_USER
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: APP_USER
+      - name: ENVIRONMENT
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ENVIRONMENT
+      - name: LOG_FILE
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: LOG_FILE
+      - name: LOG_LEVEL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: LOG_LEVEL
+      - name: LOG_SERVICE_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: LOG_SERVICE_NAME
+      - name: PATH_LOCAL_TMP_EXTRACTED_DATA
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: PATH_LOCAL_TMP_EXTRACTED_DATA
+      - name: POSTGRES_ASSISTANT_ETL_RENTAS_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: POSTGRES_ASSISTANT_ETL_RENTAS_URL
+      - name: POSTGRES_ASSISTANT_ETL_RENTAS_DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: POSTGRES_ASSISTANT_ETL_RENTAS_DB_NAME
+      - name: POSTGRES_ASSISTANT_ETL_RENTAS_SCHEMA_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: POSTGRES_ASSISTANT_ETL_RENTAS_SCHEMA_NAME
+      - name: POSTGRES_ASSISTANT_ETL_RENTAS_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: POSTGRES_ASSISTANT_ETL_RENTAS_USERNAME
+      - name: POSTGRES_ASSISTANT_ETL_RENTAS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: POSTGRES_ASSISTANT_ETL_RENTAS_PASSWORD
+      - name: POSTGRES_MAX_CONNECTIONS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: POSTGRES_MAX_CONNECTIONS
+      - name: ETL_SSO_AUTH_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ETL_SSO_AUTH_ENABLED
+      - name: ETL_SSO_AUTH_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ETL_SSO_AUTH_TENANT_ID
+      - name: ETL_SSO_AUTH_ADMIN_GROUP
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ETL_SSO_AUTH_ADMIN_GROUP
+      - name: ETL_SSO_AUTH_ANALYST_GROUP
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ETL_SSO_AUTH_ANALYST_GROUP
+      - name: ETL_SSO_AUTH_CACHE_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ETL_SSO_AUTH_CACHE_ENABLED
+      - name: ETL_SSO_AUTH_CACHE_TTL_SECONDS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ETL_SSO_AUTH_CACHE_TTL_SECONDS
+      - name: ENABLE_STALE_SWEEP
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ENABLE_STALE_SWEEP
+      - name: QDRANT_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: QDRANT_API_KEY
+      - name: QDRANT_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: QDRANT_URL
+      - name: QDRANT_COLLECTION_PREFIX
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: QDRANT_COLLECTION_PREFIX
+      - name: ETL_DOCUMENTS_S3_BUCKET
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: ETL_DOCUMENTS_S3_BUCKET
+      - name: INGEST_MAX_NODE_CHARS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: INGEST_MAX_NODE_CHARS
+      - name: INGEST_EMBED_SAFE_MAX_CHARS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: INGEST_EMBED_SAFE_MAX_CHARS
+      - name: INGEST_TEXT_CHUNK_SIZE
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: INGEST_TEXT_CHUNK_SIZE
+      - name: INGEST_TEXT_CHUNK_OVERLAP
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestetlbotweb-desa
+            key: INGEST_TEXT_CHUNK_OVERLAP
+
+  livenessProbe:
+    enabled: true
+    path: /wsrestetlbotweb/healthz
+    port: 8080
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+  readinessProbe:
+    enabled: true
+    path: /wsrestetlbotweb/healthz
+    port: 8080
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+  # Config Volumen
+  volumeMounts: {}
+  extraVolumes: {}
+  ingress:
+    enabled: true
+    className: "alb"
+    name: "ingress-sip-desa"
+    labels: {}
+    annotations:
+      kubernetes.io/ingress.class: "alb"
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-desa
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: alb-eks-desa
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      alb.ingress.kubernetes.io/enable-cors: "true"
+      alb.ingress.kubernetes.io/cors-allow-origin: "https://desa.rentascordoba.gob.ar"
+      alb.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      alb.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      alb.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal-desa.rentascordoba.gob.ar
+        paths:
+          - path: /wsrestetlbotweb
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrestetlbotweb-service
+                port:
+                  number: 80
+      - host: backend-cloud-desa.rentascordoba.gob.ar
+        paths:
+          - path: /wsrestetlbotweb
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrestetlbotweb-service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: wsrestetlbotweb-service
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+    labels:
+      environment: desa

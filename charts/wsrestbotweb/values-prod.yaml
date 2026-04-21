@@ -1,0 +1,327 @@
+global:
+  enabled: true
+  projectName: wsrestbotweb
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/wsrestbotweb
+    tag: release-1.0.7 
+    pullPolicy: IfNotPresent
+  namespace: wsrestbotweb-prod
+  clusterName: eks-prod-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+nodeeks:
+  api:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 2
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: prod
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: "8080"
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "8000"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: AWS_ACCESS_KEY_ID
+      - name: AWS_DEFAULT_REGION
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: AWS_DEFAULT_REGION
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: AWS_SECRET_ACCESS_KEY
+      - name: AZURE_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: AZURE_CLIENT_ID
+      - name: AZURE_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: AZURE_CLIENT_SECRET
+      - name: AZURE_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: AZURE_TENANT_ID
+      - name: CORS_ORIGINS_ALLOWED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: CORS_ORIGINS_ALLOWED
+      - name: HAS_LOCAL_DELAY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: HAS_LOCAL_DELAY
+      - name: POSTGRES_ASSISTANT_RENTAS_DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: POSTGRES_ASSISTANT_RENTAS_DB_NAME
+      - name: POSTGRES_ASSISTANT_RENTAS_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: POSTGRES_ASSISTANT_RENTAS_PASSWORD
+      - name: POSTGRES_ASSISTANT_RENTAS_SCHEMA_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: POSTGRES_ASSISTANT_RENTAS_SCHEMA_NAME
+      - name: POSTGRES_ASSISTANT_RENTAS_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: POSTGRES_ASSISTANT_RENTAS_URL
+      - name: POSTGRES_ASSISTANT_RENTAS_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: POSTGRES_ASSISTANT_RENTAS_USERNAME
+      - name: POSTGRES_MAX_CONNECTIONS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: POSTGRES_MAX_CONNECTIONS
+      - name: QDRANT_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: QDRANT_API_KEY
+      - name: QDRANT_COLLECTIONS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: QDRANT_COLLECTIONS
+      - name: QDRANT_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: QDRANT_URL
+      - name: WORKING_ENVIRONMENT
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: WORKING_ENVIRONMENT
+      - name: LOG_LEVEL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: LOG_LEVEL
+      - name: FB_VERIFY_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: FB_VERIFY_TOKEN
+      - name: FB_PAGE_ACCESS_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: FB_PAGE_ACCESS_TOKEN
+      - name: FB_SESSION_INACTIVITY_TIMEOUT_MIN
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: FB_SESSION_INACTIVITY_TIMEOUT_MIN
+      - name: FB_INITIAL_MESSAGE_TYPES
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: FB_INITIAL_MESSAGE_TYPES
+      - name: FB_INITIAL_MESSAGE_SEND_NOTIFICATIONS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: FB_INITIAL_MESSAGE_SEND_NOTIFICATIONS
+      - name: SSO_AUTH_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: SSO_AUTH_ENABLED
+      - name: SSO_AUTH_TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: SSO_AUTH_TENANT_ID
+      - name: SSO_AUTH_ADMIN_GROUP
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: SSO_AUTH_ADMIN_GROUP
+      - name: SSO_AUTH_ANALYST_GROUP
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: SSO_AUTH_ANALYST_GROUP
+      - name: SSO_AUTH_CACHE_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: SSO_AUTH_CACHE_ENABLED
+      - name: SSO_AUTH_CACHE_TTL_SECONDS
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: SSO_AUTH_CACHE_TTL_SECONDS
+      - name: QDRANT_COLLECTION_NAME
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: QDRANT_COLLECTION_NAME
+      - name: APIM_TOKEN_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: APIM_TOKEN_URL
+      - name: APIM_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: APIM_CLIENT_ID
+      - name: APIM_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: APIM_CLIENT_SECRET
+      - name: COP_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: COP_BASE_URL
+      - name: COPERNICO_FLOW_ENABLED
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: COPERNICO_FLOW_ENABLED
+      - name: APP_VERSION_VIRTUAL_ASSISTANT
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: APP_VERSION_VIRTUAL_ASSISTANT
+      - name: GESTIONES_API_BASE_URL
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: GESTIONES_API_BASE_URL
+      - name: TENANT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: TENANT_ID
+      - name: OAUTH_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: OAUTH_CLIENT_ID
+      - name: OAUTH_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: envs-wsrestbotweb-prod
+            key: OAUTH_CLIENT_SECRET     
+
+  livenessProbe:
+    enabled: true
+    path: /wsrestbotweb/healthz
+    port: 8000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: true
+    path: /wsrestbotweb/healthz
+    port: 8000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  volumeMounts: {}
+  extraVolumes: {}
+
+  ingress:
+    enabled: true
+    className: alb
+    name: ingress-sip-prod
+    labels: {}
+    annotations:
+      kubernetes.io/ingress.class: "alb"
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-prod
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: alb-eks-prod
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/cors-allow-origin: "https://rentascordoba.gob.ar"
+      nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal.rentascordoba.gob.ar
+        paths:
+          - path: /wsrestbotweb
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrestbotweb-service
+                port:
+                  number: 80
+      - host: backend-cloud.rentascordoba.gob.ar
+        paths:
+          - path: /wsrestbotweb
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrestbotweb-service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: wsrestbotweb-service
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+    labels:
+      environment: prod

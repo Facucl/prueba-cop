@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Architecture/wc-captcha-v3.git
+  bucket_name: fe-wc-captcha-v3
+  context: wc-captcha-app

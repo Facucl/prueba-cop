@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: JAVA EKS - Helm Chart
+name: javaeks-akka
+version: 0.0.1
+keywords:
+  - javaeks-akka

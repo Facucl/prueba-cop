@@ -1,0 +1,6 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/copernico/pcs-peperina.git
+  ecr_registry: registry-sip.cba.gov.ar:5000
+  ecr_repository: readside-cop
+  sbt_cmd: readside/docker:stage
+  dockerfile_path: ./readside/Dockerfile

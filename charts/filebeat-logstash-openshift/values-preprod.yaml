@@ -1,0 +1,498 @@
+#################################################################################################################################
+#               CONFIGURACION FILEBEAT                                                                                          #
+#################################################################################################################################
+filebeat:
+  daemonset:
+    # Annotations to apply to the daemonset
+    annotations: {}
+    # additionals labels
+    labels: {}
+    affinity: {}
+    # Include the daemonset
+    enabled: true
+    # Extra environment variables for Filebeat container.
+    envFrom: []
+    # - configMapRef:
+    #     name: config-secret
+    extraEnvs: 
+      - name: NODE_NAME
+        value: preprod
+      - name: LOGSTASH_HOST
+        value: logstash-openshift:5044   
+    extraVolumes:
+      []
+      # - name: extras
+      #   emptyDir: {}
+    extraVolumeMounts:
+      []
+      # - name: extras
+      #   mountPath: /usr/share/extras
+      #   readOnly: true
+    hostNetworking: false
+    # Allows you to add any config files in /usr/share/filebeat
+    # such as filebeat.yml for daemonset
+    filebeatConfig:
+      filebeat.yml: |
+        filebeat.inputs:
+        - type: container
+          paths:
+            - /var/log/containers/*.log
+          processors:
+          - add_kubernetes_metadata:
+              host: ${NODE_NAME}
+              matchers:
+              - logs_path:
+                  logs_path: "/var/log/containers/"
+
+        output.logstash:
+          hosts: ["${LOGSTASH_HOST}"]
+    # Only used when updateStrategy is set to "RollingUpdate"
+    maxUnavailable: 1
+    nodeSelector: {}
+    # A list of secrets and their paths to mount inside the pod
+    # This is useful for mounting certificates for security other sensitive values
+    secretMounts: []
+    #  - name: filebeat-certificates
+    #    secretName: filebeat-certificates
+    #    path: /usr/share/filebeat/certs
+    # Various pod security context settings. Bear in mind that many of these have an impact on Filebeat functioning properly.
+    #
+    # - User that the container will execute as. Typically necessary to run as root (0) in order to properly collect host container logs.
+    # - Whether to execute the Filebeat containers as privileged containers. Typically not necessarily unless running within environments such as OpenShift.
+    securityContext:
+      runAsUser: 0
+      privileged: true
+
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "100Mi"
+      limits:
+        cpu: "1000m"
+        memory: "200Mi"
+    tolerations: []
+
+  # Root directory where Filebeat will write data to in order to persist registry data across pod restarts (file position and other metadata).
+  hostPathRoot: /var/lib
+
+  image: "docker.elastic.co/beats/filebeat"
+  imageTag: "7.17.3"
+  imagePullPolicy: "IfNotPresent"
+  imagePullSecrets: []
+
+  livenessProbe:
+    exec:
+      command:
+        - sh
+        - -c
+        - |
+          #!/usr/bin/env bash -e
+          curl --fail 127.0.0.1:5066
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+
+  readinessProbe:
+    exec:
+      command:
+        - sh
+        - -c
+        - |
+          #!/usr/bin/env bash -e
+          filebeat test output
+    failureThreshold: 3
+    initialDelaySeconds: 310
+    periodSeconds: 10
+    timeoutSeconds: 5
+
+  # managedServiceAccount tiene que ser false para no utilizar la configuracion por defecto 
+  managedServiceAccount: false
+  openshiftRbac: true
+
+  clusterRoleRules:
+    - apiGroups:
+        - ""
+      resources:
+        - namespaces
+        - nodes
+        - pods
+      verbs:
+        - get
+        - list
+        - watch
+    - apiGroups:
+        - "apps"
+      resources:
+        - replicasets
+      verbs:
+        - get
+        - list
+        - watch
+
+  podAnnotations:
+    {}
+    # iam.amazonaws.com/role: es-cluster
+
+  # Custom service account override that the pod will use
+  serviceAccount: filebeat-openshift
+
+  # Annotations to add to the ServiceAccount that is created if the serviceAccount value isn't set.
+  serviceAccountAnnotations:
+    {}
+    # eks.amazonaws.com/role-arn: arn:aws:iam::111111111111:role/k8s.clustername.namespace.serviceaccount
+
+  # How long to wait for Filebeat pods to stop gracefully
+  terminationGracePeriod: 30
+  # This is the PriorityClass settings as defined in
+  # https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/#priorityclass
+  priorityClassName: ""
+
+  updateStrategy: RollingUpdate
+
+  # Override various naming aspects of this chart
+  # Only edit these if you know what you're doing
+  fullnameOverride: filebeat-openshift
+
+  envFrom: []
+  extraEnvs: []
+  extraVolumes: []
+  extraVolumeMounts: []
+  # Allows you to add any config files in /usr/share/filebeat
+  # such as filebeat.yml for both daemonset and deployment
+  filebeatConfig: {}
+  nodeSelector: {}
+  podSecurityContext: {}
+  resources: {}
+  secretMounts: []
+  tolerations: []
+  labels: {}
+
+#################################################################################################################################
+#               CONFIGURACION LOGSTASH                                                                                          #
+#################################################################################################################################
+logstash:
+  replicas: 1
+
+  # Allows you to add any config files in /usr/share/logstash/config/
+  # such as logstash.yml and log4j2.properties
+  #
+  # Note that when overriding logstash.yml, `http.host: 0.0.0.0` should always be included
+  # to make default probes work.
+  logstashConfig: 
+    logstash.yml: |
+      http.host: 0.0.0.0
+      pipeline.ecs_compatibility: disabled
+  
+
+  # Allows you to add any pipeline files in /usr/share/logstash/pipeline/
+  ### ***warn*** there is a hardcoded logstash.conf in the image, override it first
+  logstashPipeline: 
+    logstash.conf: |      
+      input {
+        beats {
+          port => 5044
+          host => "0.0.0.0"
+        }
+      }
+
+      filter {
+
+        ### Configuracion para ingest de NGINX
+        if [fileset][module] == "nginx" {
+
+          ### Logs de access
+          if [fileset][name] == "access" {
+            grok {
+              match => { "message" => [
+                "%{IPORHOST:[nginx][access][remote_ip]} - %{DATA:[nginx][access][user_name]} \[%{HTTPDATE:[nginx][access][time]}\] \"%{WORD:[nginx][access][method]} %{DATA:[nginx][access][url]} HTTP/%{NUMBER:[nginx][access][http_version]}\" %{NUMBER:[nginx][access][response_code]} %{NUMBER:[nginx][access][body_sent][bytes]} \"%{DATA:[nginx][access][referrer]}\" \"%{DATA:[nginx][access][agent]}\""
+                ] 
+              }
+              
+              
+              remove_field => "message"
+              add_tag => [ "nginx"]
+              add_tag => [ "valid"]
+            }
+            mutate {
+              add_field => { "read_timestamp" => "%{@timestamp}" }
+            }
+            date {
+              match => [ "[nginx][access][time]", "dd/MMM/YYYY:H:m:s Z" ]
+              remove_field => "[nginx][access][time]"
+            }
+            useragent {
+              source => "[nginx][access][agent]"
+              target => "[nginx][access][user_agent]"
+              remove_field => "[nginx][access][agent]"
+            }
+            geoip {
+              source => "[nginx][access][remote_ip]"
+              target => "[nginx][access][geoip]"
+            }
+          }
+
+
+          ### Logs de errors
+          else if [fileset][name] == "error" {
+            grok {
+              match => { 
+                "message" => [
+                  "%{DATA:[nginx][error][time]} \[%{DATA:[nginx][error][level]}\] %{NUMBER:[nginx][error][pid]}#%{NUMBER:[nginx][error][tid]}: (\*%{NUMBER:[nginx][error][connection_id]} )?%{GREEDYDATA:[nginx][error][message]}"
+                ] 
+              }
+              remove_field => "message"
+              add_tag => [ "nginx"]
+              add_tag => [ "valid"]
+            }
+            mutate {
+              rename => { "@timestamp" => "read_timestamp" }
+            }
+            date {
+              match => [ "[nginx][error][time]", "YYYY/MM/dd H:m:s" ]
+              remove_field => "[nginx][error][time]"
+            }
+          }
+        }
+
+
+        ### Borrado de campo host
+        mutate {
+          remove_field => ["host"]
+        }
+
+        ### Reemplazo en los mensajes de los saltos de linea por cadena vacia.
+        mutate {
+            gsub => ["message", "\n", ""]
+        }
+
+        #Configuracion Docker
+        grok {
+          match => { "message" =>[
+                      #Pueden crearse tantos filtros sean necesarios para llevar un value a un field. La ultima linea es la que machea por defecto.
+                      #Filtros para Pago Electronico
+                      "\[%{TIMESTAMP_ISO8601:FECHA}\] \| \[%{WORD:ENV}\] \| \[%{WORD:APPLICATION}\] \| \[%{WORD:TIPO}\] \| \[%{GREEDYDATA:CLASE}\] \| \[importe Entidad: %{NUMBER:montoConfirm0}\]",
+                      "\[%{TIMESTAMP_ISO8601:FECHA}\] \| \[%{WORD:ENV}\] \| \[%{WORD:APPLICATION}\] \| \[%{WORD:TIPO}\] \| \[%{GREEDYDATA:CLASE}\] \| \[%{NUMBER:IDTXAWPE} \- getImporte: \(%{NUMBER:montoConfirm1}\)\]",
+                      "\[%{TIMESTAMP_ISO8601:FECHA}\] \| \[%{WORD:ENV}\] \| \[%{WORD:APPLICATION}\] \| \[%{WORD:TIPO}\] \| \[%{GREEDYDATA:CLASE}\] \| \[%{NUMBER:IDTXAWPE} \- Importe: \(%{NUMBER:montoConfirm2}\)\]",
+                      #Default match
+                      "^\[%{TIMESTAMP_ISO8601:FECHA}\] \| \[%{WORD:ENV}\] \| \[%{WORD:APPLICATION}\] \| \[%{WORD:TIPO}\] \| \[%{GREEDYDATA:CLASE}\] \| \[%{GREEDYDATA:MENSAJE}\]$",
+                      #Nro de transaccion
+                      "\[%{GREEDYDATA:GLOBAL}\] \| \[%{GREEDYDATA:TX}\] \| \[%{GREEDYDATA:TXP}\] \| \[%{TIMESTAMP_ISO8601:FECHA}\] \| \[%{WORD:ENV}\] \| \[%{GREEDYDATA:APPLICATION}\] \| \[%{WORD:TIPO}\] \| \[%{GREEDYDATA:CLASE}\] \| \[%{GREEDYDATA:MENSAJE}\]"
+                      ]
+              }
+          
+
+          ### Borro field message debido a que no es indexable. 
+          ### https://www.elastic.co/guide/en/logstash/current/plugins-filters-mutate.html#plugins-filters-mutate-remove_field
+          remove_field => ["message"]
+          
+          ### Agrego tag valid
+          add_tag => [ "valid"]
+        }
+
+        
+        # grok
+        #- {
+        #   match =>  { "source" => ["/[^/]+/containers/(?<APP>.*)/[a-z-A-Z]*.log" ]}
+        #    add_tag => ["valid"]
+
+        #   }
+
+        
+        
+        
+        #Paso de string a integer
+        mutate {
+          convert => {
+            "montoConfirm0" => "integer"
+            "montoConfirm1" => "integer"
+            "montoConfirm2" => "integer"
+          }
+        }
+    
+    
+        
+        
+        #Si el documento no tiene el tag valid, se borra.
+        if "valid" not in [tags] {
+          drop { }
+        }
+      }
+
+      output {
+        file
+        {
+          path=> "/tmp/logstash_debug.log"
+
+          codec => line { format => "custom format: %{message}"}
+        }
+      }
+
+      output {
+        #Si contiene el tag nginx se ingesta al index nginx-ilm
+        if "nginx" in [tags] {
+          opensearch {
+            hosts => ["https://opensearch-rentas.cba.gov.ar:443" ]
+            manage_template => false
+            index => "preprod-nginx-ism"
+            ssl => false
+            ssl_certificate_verification => false
+            user => admin
+            password => "${PASSWORD_ADMIN_OPENSEARCH}"
+          }
+        }
+        # Si no contiene el tag nginx se ingesta en el index docker-ilm
+        else if "nginx" not in [tags]{
+          opensearch {
+            hosts => [ "https://opensearch-rentas.cba.gov.ar:443" ]
+            manage_template => false
+            index => "preprod-openshift"
+            ssl => false
+            ssl_certificate_verification => false
+            user => admin	
+            password => "${PASSWORD_ADMIN_OPENSEARCH}"
+            #document_type => "%{[@metadata][type]}"
+          }
+        }
+      }
+  # Allows you to add any pattern files in your custom pattern dir
+  logstashPatternDir: "/usr/share/logstash/patterns/"
+  logstashPattern: {}
+  #    pattern.conf: |
+  #      DPKG_VERSION [-+~<>\.0-9a-zA-Z]+
+
+  # Extra environment variables to append to this nodeGroup
+  # This will be appended to the current 'env:' key. You can use any of the kubernetes env
+  # syntax here
+  extraEnvs: []
+  #  - name: MY_ENVIRONMENT_VAR
+  #    value: the_value_goes_here
+
+  # Allows you to load environment variables from kubernetes secret or config map
+  envFrom: 
+  - secretRef:
+      name: opensearch-password
+  # - configMapRef:
+  #     name: config-map
+
+  # Add sensitive data to k8s secrets
+  
+
+  image: "opensearchproject/logstash-oss-with-opensearch-output-plugin"
+  imageTag: "7.16.3"
+  imagePullPolicy: "IfNotPresent"
+  imagePullSecrets: []
+
+
+  logstashJavaOpts: "-Xmx1g -Xms1g"
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1536Mi"
+    limits:
+      cpu: "2000m"
+      memory: "4096Mi"
+
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 1Gi
+
+  rbac:
+    create: true
+ 
+  podSecurityPolicy:
+    create: false
+
+  persistence:
+    enabled: false
+    annotations: {}
+
+  # By default this will make sure two pods don't end up on the same node
+  # Changing this to a region would allow you to spread pods across regions
+  antiAffinityTopologyKey: "kubernetes.io/hostname"
+
+  # Hard means that by default pods will only be scheduled if there are enough nodes for them
+  # and that they will never end up on the same node. Setting this to soft will do this "best effort"
+  antiAffinity: "hard"
+
+  podManagementPolicy: "Parallel"
+
+  httpPort: 9600
+
+
+  updateStrategy: RollingUpdate
+
+  # This is the max unavailable setting for the pod disruption budget
+  # The default value of 1 will make sure that kubernetes won't allow more than 1
+  # of your pods to be unavailable during maintenance
+  maxUnavailable: 1
+
+  podSecurityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+
+  securityContext:
+    capabilities:
+      drop:
+        - ALL
+    # readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+
+  # How long to wait for logstash to stop gracefully
+  terminationGracePeriod: 120
+
+  # Probes
+  # Default probes are using `httpGet` which requires that `http.host: 0.0.0.0` is part of
+  # `logstash.yml`. If needed probes can be disabled or overridden using the following syntaxes:
+  #
+  # disable livenessProbe
+  # livenessProbe: null
+  #
+  # replace httpGet default readinessProbe by some exec probe
+  # readinessProbe:
+  #   httpGet: null
+  #   exec:
+  #     command:
+  #       - curl
+  #      - localhost:9600
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 300
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 300
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 3
+    successThreshold: 3
+
+  nodeSelector: {}
+  tolerations: []
+
+  #Configurar esta variable es necesario para standard de nomesclatura
+  fullnameOverride: logstash-openshift
+
+  service:
+    annotations: {}
+    type: ClusterIP
+    ports:
+      - name: beats
+        port: 5044
+        protocol: TCP
+        targetPort: 5044
+  
+  ingress:
+    enabled: false

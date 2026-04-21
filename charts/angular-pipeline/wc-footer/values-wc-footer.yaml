@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Architecture/wc-footer.git
+  bucket_name: fe-wc-footer
+  context: microfront-footer-app

@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: NodeJS Helm Chart
+name: node
+version: 0.0.1
+keywords:
+  - node

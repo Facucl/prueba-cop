@@ -1,0 +1,372 @@
+global:
+  clusterName: "cicd"
+
+clusterViewGroups:
+  - openshift-arquitectura
+
+auth:
+  deploy_web:
+    applications:
+      - rentas
+      - sellosrentas
+      - wsrestabmtramites
+      - wsrestant
+      - wsrestauditoria
+      - wsrestautomotores
+      - wsrestcalculador
+      - wsrestcomposicionmail
+      - wsrestdeudaant
+      - wsrestdeudafront
+      - wsrestdeudar2
+      - wsrestembarcaciones
+      - wsrestimpuestos
+      - wsrestinformacionusuariorentas
+      - wsrestingresosbrutos
+      - wsrestinmuebles
+      - wsrestpagos
+      - wsrestpsrm
+      - wsrestresoluciones
+      - wsrestsujetos
+      - wsresttipas
+      - wsresttramites
+      - wsresttributario
+      - wsrestvalidadorexterno
+      - kontaktar
+      - fe-emisionimpuestos
+      - wsrestpagos360
+      - wsrestcontribuyentesespeciales
+      - wsrestgatewaylogin
+      - wsrestregimenretper
+      - fe-shell
+      - fe-header
+      - mf-situacion-fiscal-360
+      - web-bff-modular-cop
+      - fe-declaraciones-autoliquidacion
+      - wsrestsellos
+      - wsrestsellosimportararchivo
+      - wsrestsellosprocesararchivo
+      - fe-rentassellos
+      - turnero
+      - fe-inicio
+      - fe-mi-perfil
+      - fe-mi-inicio
+      - fe-assets
+      - fe-declaraciones-juradas 
+      - fe-impuestos
+      - fe-nuevaemision
+      - fe-nuevo-rentas
+      - fe-gestiones
+      - fe-emision
+      - wc-footer
+      - fe-emisiontributaria
+      - fe-mi-rentas
+      - wsrestperfilunico
+      - fe-base
+      - wc-components
+      - wsrestcedulon
+      - fe-mantenimiento
+      - fe-planesdepago
+      - wsrestlogininterno
+      - fe-mantenimiento-contextual
+      - wsrestddjj
+      - mf-datos-contacto-360
+      - fe-panel
+      - fe-actuaciones
+      - fe-kosmos-kit
+      - wsselloescribano
+      - mf-dfe-360
+      - mf-vencimientos-360
+      - mf-impuestos-360
+      - mf-declaraciones-juradas-360
+      - wsrestredessociales
+      - wsrestmunicipios
+      - wsrestktk
+      - wc-captcha-v3
+      - wsrestdfe360
+      - wsrestsujetosbe
+      - wsrestobjetosbe
+      - fe-emision-municipal
+      - wsrestindustria
+
+  deploy_dao:
+    applications:
+      - wsrestcuotaunica
+      - wsrestdaopsrm
+      - wsrestdebitoautomatico
+      - wsrestdebitos
+      - wsrestmercadopagodebitos
+      - wsrestconsultasdebitos
+      - wsrestpayperticdebitos
+      - wsrestadhesiondao
+      - fe-debito-automatico
+      - wsrestrecurrenciadao
+      - mf-adhesiones-dao-360
+      - wsrestcantidaddebitos360
+      - wsrestrecurrenciapagoticdao
+      - fe-billetera-frontend
+      - wsrestmercadopagodao
+
+  deploy_dc:
+    applications:
+      - cronjobpsrm
+      - rentas
+      - wsrestdeudacaminera
+      - cronjobunificado
+      - cronjobdao
+      - wsrestdc
+      - magicbox
+      - fe-interfaces
+      - wsrestdatosdistribuciondc
+
+#  deploy_gant:
+#    applications:
+
+
+  deploy_pagos:
+    applications:
+      - wsrestdecidir
+      - wsrestlink
+      - wsrestmediospago
+      - wsrestmobbexgateway
+      - wsrestmercadopagogateway
+      - wsrestnotificationserver
+      - wsrestpsrmgateway
+      - wsrestreportesant  
+      - wsrestseguridaddatos
+      - wsrestbilleteragateway
+      - wsrestpagoelectronico
+      - wsrestpagos360
+      - wsrestsiroroela
+      - wsrestmacrogateway
+      - wsrestgrilladepagos
+      - wsrestcomprobantestributarios
+      - wsrestpaypertic
+      - wsrestsugitgateway
+      - wsresthistorialdepagos
+      - wsrestmailspagos
+      - wsresttransaccionespagos
+      - wsrestcatastrogateway
+      - wsrestpayfun
+      - fe-decidir2
+      - fe-pagos
+      - wsrestdaciongateway
+      - fe-debito-automatico
+      - wsresttacatacagateway
+      - wsrestcomprobantespagos
+      - wsrestcomprobantes
+      - wsrestsiferegateway
+      - wsresthistorial360
+      - mf-ultimos-pagos-360
+
+  deploy_planes_de_pagos:
+    applications:
+      - wsrestplanespagos
+      - wsrestids
+      - wsrestreportes
+      - wsrestgalileo
+      - wsrestsucerp
+      - wsrestformaspago
+      - wsrestparameter
+      - wsrestidm
+      - fe-mf-pdp-activos-360
+      - wsrestplanesactivos360
+      - wsrestpdpmunicipio
+      - wsrestprecalculado
+      - wsrestplanespagoshistoricos
+      - wsrestetiquetas
+      - wsrestpdpaliviofiscal
+      - wsrestpaf
+      
+
+  deploy_impuestos:
+    applications:
+      - wsdeudapatente
+      - wsrestfta
+      - wscronfta
+      - wsrestprocuradores
+      - wsrestliquidaciones
+      - wsrestabmprocuradores
+#      - wsrestindustria
+      
+  deploy_sellos:
+    applications:
+      - wsrestsellos
+      - wsrestsellosimportararchivo
+      - wsrestsellosprocesararchivo
+      - fe-rentassellos
+      - fe-declaraciones-autoliquidacion
+
+  deploy_dif:
+    applications:
+    - backendinteligenciafiscal
+    - fe-inteligenciafiscal
+    - fe-actuaciones
+    - backendactuaciones
+    - ia-dof
+    - be-dof
+    - fe-dof
+    - wsrestdifdatabricks
+  
+  deploy_copernico:
+    applications:
+    - web-bff-cop
+    - readside-cop
+    - calculo-juicios-cop
+    - front-demo-cop
+    - gab-cop
+    - pcs-cop
+    - wsrestdeudasujeto-cop
+    - wsrestcontencioso-cop
+    - wsrestipv-cop
+    - wsrestqcpobjeto-cop
+    - wsrestqcpsujeto-cop
+    - wsrestjuicios-cop
+    - wsrestobjetos-cop
+    - ws-sujeto-v8-cop
+    - ws-cop-manager-read-objetos-cop
+    - ws-cop-manager-read-obligaciones-cop
+    - ws-cop-mngr-objetos-obligaciones-cop
+    - ws-redis-manager-read-rule-cop
+    - ws-redis-manager-read-rules-cop
+    - ws-redis-manager-upsert-data-cop
+    - ws-redis-manager-read-keys-cop
+    - ws-rules-manager-backup-cop
+    - ws-rules-manager-permissions-cop
+    - ws-rules-manager-read-admin-cop
+    - ws-rules-manager-read-admins-cop
+    - ws-rules-manager-read-token-cop
+    - ws-rules-manager-update-token-cop
+    - ws-rules-manager-upsert-admin-cop
+    - ws-rules-manager-upsert-rule-cop
+    - ws-rules-manager-read-rules-cop
+    - ws-rules-manager-read-rule-cop
+    - ws-rules-manager-create-token-cop
+    - ws-manager-sujeto-obligaciones-cop
+    - dmn-manager-fe-cop
+    - ws-rules-manager-session-cleaner-cop
+    - ws-rules-manager-admin-cleaner-cop
+    - ws-rules-manager-cypher-core-cop
+    - ws-rules-manager-rule-cleaner-cop
+    - pcs-saldo-tool-cop
+    - ws-cop-manager-read-descuento-30-cop
+    - copernico-suite-cop
+    - ws-cop-manager-read-juicios-cop
+    - ws-copernico-suite-back-cop
+    - ws-manager-read-sujeto-interno-cop
+    - ws-manager-recuperador-objetos-cop
+    - ws-manager-recuperador-eventos-cop
+    - ws-manager-recuperador-ants-cop
+    - ws-manager-resincronizador-del-30-cop
+    - ws-cop-manager-read-objetos-by-params
+    - ws-manager-ge-detalle-objetos-cop
+    - ws-manager-ge-cantidad-objetos-cop
+    - ws-manager-sit-fiscal-catastro-cop
+    - ws-manager-gen-obl-inmobiliario-cop
+    - ws-manager-consulta-masiva-cop
+    - ws-manager-gen-obligaciones-inmobiliario-cop
+
+
+  deploy_fta:
+    applications:
+    - backftagoasig
+    - backftago
+    - backftaotaxprocus
+    - fe-ftago
+
+  deploy_puntajefip: 
+    applications:
+    - backproductividadfip
+    - fe-productividadfip
+    - botautocalculofip
+
+  openshift-arquitectura: 
+    applications:
+    - wsrestgalileo
+    - wsocketinformedeuda
+    - wsrestgalileo-eks
+
+  deploy_crm: 
+    applications:
+    - fe-catastro-crm
+    - fe-exenciones-crm
+    - fe-crm
+    - wsrestgestiones360
+    - mf-gestiones-360
+    - wsrestdfe360
+    - wsrestaud360
+
+  deploy_billetera:
+    applications:
+    - fe-billetera-frontend  
+    - fe-billetera-front-backoffice
+    - billetera-backbilletera
+    - billetera-backoffice
+    - billetera-web3js
+  
+  deploy_masterplan: 
+    applications:
+    - wsrest-masterplan-automation
+    - wsrest-masterplan-config
+    - fe-masterplan-config
+    - fe-masterplan-planes
+    - wsrest-masterplan-filtro-apta-plan
+    - wsrest-masterplan-core
+    - wsrest-masterplan-planes-simulacion
+    - wsrest-masterplan-generar-plan
+    - wsrest-masterplan-generar-comprobante
+    - wsrest-masterplan-procesar-pago
+    - wsrest-masterplan-consulta-detalle-boleta
+    - wsrest-masterplan-transicion-estados
+    - wsrest-masterplan-consultar-cuotas
+    - wsrest-masterplan-consultar-planes
+    - wsrest-masterplan-debito
+    - wsrest-masterplan-deuda-incluida
+    - wsrest-masterplan-orquestador
+    - wsrest-masterplan-gestion-planes
+    - fe-masterplan-gestion
+    
+  deploy_rgp: 
+    applications:
+    - afectacionviviendaservice-rgp
+    - bpm-microservicio-rgp
+    - adminbackend-microservicio-rgp
+    - fe-admin-rgp
+    - microservicio-apigateway-rgp
+    - microservicionotificaciones-rgp
+
+  deploy_multiplug:
+    applications:
+    - backendmultiplug
+    - fe-multiplug
+
+  deploy_chatbot:
+    applications:
+    - wsrestbotweb
+    - wsrestetlbotweb
+    - fe-bot-web
+    - fe-backoffice-bot-web
+
+  deploy_tasa360:
+    applications:
+    - fe-codeadmin
+    - fe-tasa360-backoffice
+    - fe-tasa360-ciudadano
+    - apicodeadmin
+    - tasa360-backend
+
+  deploy_aysgestiones:  
+    applications:
+    - aysgestiones-core
+    - aysgestiones-normativa
+
+  deploy_fenix:
+    applications:
+    - fenixbe
+    - cuentacorrientebe 
+    - fe-fenix
+    - fe-cuentacorriente
+  
+  deploy_keycloak:
+    applications:
+    - identity-eks
+    - keycloak-eks

@@ -1,0 +1,108 @@
+global:
+  clusterName: "prod"
+
+auth:
+  deploy_web:
+    applications:
+      - rentas
+      - sellosrentas
+      - wsrestant
+      - wsrestauditoria
+      - wsrestautomotores
+      - wsrestcalculador
+      - wsrestcomposicionmail
+      - wsrestcomprobantes
+      - wsrestdeudaant
+      - wsrestdeudafront
+      - wsrestdeudar2
+      - wsrestembarcaciones
+      - wsrestimpuestos
+      - wsrestinformacionusuariorentas
+      - wsrestingresosbrutos
+      - wsrestinmuebles
+      - wsrestpagos
+      - wsrestpsrm
+      - wsrestresoluciones
+      - wsrestsujetos
+      - wsresttipas
+      - wsresttramites
+      - wsresttributario
+      - wsrestvalidadorexterno
+      - wsrestkepler
+      - kontaktar
+      - wsrestpagos360
+      - wsrestcontribuyentesespeciales
+      - wsrestabmtramites
+      - wsrestgatewaylogin
+      - wsrestregimenretper
+      - wsrestsellos
+      - wsrestsellosimportararchivo
+      - wsrestsellosprocesararchivo
+     
+
+  deploy_dao:
+    applications:
+      - wsrestcuotaunica
+      - wsrestdaopsrm
+      - wsrestdebitoautomatico
+      - wsrestdebitos
+      - wsrestmercadopagodebitos
+      - wsrestpayperticdebitos
+      - wsrestadhesiondao
+  
+  deploy_dc:
+    applications:
+      - cronjobpsrm
+      - rentas
+      - cronjobunificado
+      - wsrestdc
+
+#  deploy_gant:
+#    applications:
+
+  deploy_pagos:
+    applications:
+      - wsrestdecidir
+      - wsrestlink
+      - wsrestmediospago
+      - wsrestmobbexgateway
+      - wsrestmercadopagogateway
+      - wsrestpsrmgateway
+      - wsrestreportesant  
+      - wsrestseguridaddatos
+      - wsrestbilleteragateway
+      - wsrestpagoelectronico
+      - wsrestpagos360
+      - wsrestpaypertic
+
+  deploy_planes_de_pagos:
+    applications:
+      - wsrestplanespagos
+      - wsrestgalileo
+
+  deploy_impuestos:
+    applications:
+      - wsdeudapatente
+      - wsrestfta
+      - wscronfta
+
+  deploy_sellos:
+    applications:
+      - wsrestsellos
+      - wsrestsellosimportararchivo
+      - wsrestsellosprocesararchivo
+
+  deploy_dif:
+    applications:
+    - backendinteligenciafiscal
+    
+  deploy_copernico:
+    applications:
+
+  deploy_fta:
+    applications:
+    - backftagoasig
+
+  deploy_puntajefip: 
+    applications:
+    - 

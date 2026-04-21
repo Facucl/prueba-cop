@@ -1,0 +1,4 @@
+project:
+  repository_url: https://gitlab-rentas.rentasweb.gob.ar/servicedesk/chatbots/neurus-rasa-model.git
+  ecr_registry: 634937925704.dkr.ecr.us-west-2.amazonaws.com
+  ecr_repository: neurus-rasa

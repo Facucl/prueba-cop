@@ -1,0 +1,139 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "wsrestdeudasujeto-cop"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/wsrestdeudasujeto-cop"
+    tag: release-1.1.18_cop-wsrest-deuda-sujeto
+    pullPolicy: Always
+
+  # Namespace where release will be deployed
+  namespace: wsrestdeudasujeto-cop-desa
+  clusterName: desa-wsrestdeudasujeto-cop
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "ClusterFirst"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+
+node:
+  api:
+    resources: 
+      limits:
+        cpu: 250m
+        memory: 512Mi
+    # commandArgs custom command argument on deployment pod template
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 1000
+      runAsGroup: 1000
+      scc:
+        enabled : true
+        rootUser: false
+    envVars:
+      secretVars:
+        - name: wsrestdeudasujeto-cop-secret
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: false
+      path: /
+      port: 3000
+      failureThreshold: 30
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 1
+
+    readinessProbe:
+      enabled: false
+      path: /
+      port: 3000
+      failureThreshold: 3
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+
+#    volumeMounts: 
+#      - mountPath: /home/node/app/calcula_recargos.dmn
+#        name: calcula-recargos
+#        subPath: calcula_recargos.dmn
+#        readOnly: true
+        
+#      - mountPath: /home/node/app/simulation_sitfiscal.dmn 
+#        name: simulation-sitfiscal
+#        subPath: simulation_sitfiscal.dmn 
+#        readOnly: true
+        
+#      - mountPath: /home/node/app/simulation_visible.dmn 
+#        name: simulation-visible 
+#        subPath: simulation_visible.dmn 
+#        readOnly: true
+        
+#      - mountPath: /home/node/app/interes.dmn
+#        name: interes
+#        subPath: interes.dmn
+#        readOnly: true
+
+#      - mountPath: /home/node/app/decision_30_descuento.dmn
+#        name: decision-treinta-descuento
+#        subPath: decision_30_descuento.dmn
+#        readOnly: true  
+
+#    extraVolumes:
+#      - name: calcula-recargos
+#        type: configMap
+#        configMapName: calcula-recargos
+#        defaultMode: 420
+        
+#      - name: simulation-sitfiscal
+#        type: configMap
+#        configMapName: simulation-sitfiscal
+#        defaultMode: 420
+        
+#      - name: simulation-visible 
+#        type: configMap
+#       configMapName: simulation-visible 
+#        defaultMode: 420
+        
+#      - name: interes
+#        type: configMap
+#        configMapName: interes
+#        defaultMode: 420
+
+
+#      - name: decision-treinta-descuento
+#        type: configMap
+#        configMapName: decision-treinta-descuento
+#        defaultMode: 420
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations:
+          haproxy.router.openshift.io/timeout: "300s"
+      hosts: 
+        - host: "cop-wsrestdeudasujeto.apps.apps.desa-rentas.gobiernocba.gov.ar"
+          paths:
+            - path: /
+              pathType: Prefix
+    service:
+      port: 3000
+      targetPort: 3000
+

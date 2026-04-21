@@ -1,0 +1,5 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Architecture/WSRestGalileo.git
+  ecr_registry: registry-sip.cba.gov.ar:5000
+  eks_registry: 634937925704.dkr.ecr.us-west-2.amazonaws.com
+  ecr_repository: wsrestgalileo

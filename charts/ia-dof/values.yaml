@@ -1,0 +1,104 @@
+global:
+  enabled: true
+  projectName: ia-dof
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/wsrest-masterplan-config
+    tag: release-0.0.8
+    pullPolicy: IfNotPresent
+  namespace: wsrest-masterplan-config-desa
+  clusterName: eks-desa-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+nodeeks:
+  api:
+    enabled: true  # Se agregó esta clave para asegurar compatibilidad con deployment.yaml
+    resources: 
+      requests:
+        cpu: 500m
+        memory: 1100Mi
+      limits:
+        cpu: 1000m
+        memory: 1100Mi
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: DESA
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: '8080'
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "3000"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: USERDB
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrest-masterplan-config
+            key: USERDB
+      - name: USERPASS
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrest-masterplan-config
+            key: USERPASS
+      - name: DBURL
+        valueFrom:
+          secretKeyRef:
+            name: dbcredentials-wsrest-masterplan-config
+            key: DBURL
+
+  livenessProbe:
+    enabled: true
+    path: /wsrest-masterplan-config/api/health
+    port: 3000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: true
+    path: /wsrest-masterplan-config/api/health
+    port: 3000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  volumeMounts: 
+    - mountPath: /tmp/cacerts
+      name: dgcit-root-ca
+  extraVolumes:
+    - name: dgcit-root-ca
+      secret:
+        secretName: dgcit-root-ca
+
+  ingress:
+    enabled: true
+    className: "nginx"
+    labels: {}
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80},{"HTTPS": 443}]'
+    hosts: 
+      - host: apps.apps.desa-rentas-os.gobiernocba.gov.ar
+        paths:
+          - path: /wsrest-masterplan-config/
+            pathType: Prefix

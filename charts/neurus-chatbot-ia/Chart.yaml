@@ -1,0 +1,8 @@
+apiVersion: v2
+name: neurus-chatbot-ia
+version: 0.0.1
+dependencies:
+- name: neurusrasaeks
+  version: 0.0.1
+  # repository: "http://--/"
+  repository: "file://../neurusrasaeks"

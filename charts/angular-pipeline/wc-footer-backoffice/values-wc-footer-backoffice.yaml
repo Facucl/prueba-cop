@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Architecture/wc-footer-backoffice.git
+  bucket_name: fe-wc-footer-backoffice
+  context: wc-footer-backoffice

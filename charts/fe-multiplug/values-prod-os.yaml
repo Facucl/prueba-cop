@@ -1,0 +1,94 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "fe-multiplug-prod"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/fe-multiplug"
+    tag: release-0.0.031
+    pullPolicy: Always
+
+  # Namespace where release will be deployed
+  namespace: fe-multiplug-prod
+  clusterName: prod-fe-multiplug
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "ClusterFirst"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+node:
+  api:
+    resources: 
+      requests:
+        cpu: 100m
+        memory: 600Mi
+      limits:
+        cpu: 250m
+        memory: 1G
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "nodejs -jar server.jar"
+   
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+      
+
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      runAsGroup: 0
+      scc:
+        enabled : true
+        rootUser: true
+    envVars:
+      secretVars:
+        - name: fe-multiplug-secret
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: false
+      path: /
+      port: 
+      failureThreshold: 30
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 1
+
+    readinessProbe:
+      enabled: false
+      path: /
+      port: 3000
+      failureThreshold: 3
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts: {}
+    extraVolumes: {}
+
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: "multiplug.apps.apps.prod-rentas-os.gobiernocba.gov.ar"
+          paths:
+            - path: /
+              pathType: Prefix
+    service:
+      port: 80
+      targetPort: 80
+

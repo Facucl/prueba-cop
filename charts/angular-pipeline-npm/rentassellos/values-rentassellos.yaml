@@ -1,0 +1,5 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Sellos/kolektor-sellos
+  node_version: '12.8'
+  bucket_name: fe-rentas-sellos
+  context: sellos

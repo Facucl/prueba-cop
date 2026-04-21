@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/DAO/kolektor-debito-automatico.git
+  bucket_name: fe-debito-automatico
+  context: fe-debito-automatico

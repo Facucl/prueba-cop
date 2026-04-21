@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: php Helm Chart
+name: php
+version: 0.0.1
+keywords:
+  - php

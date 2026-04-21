@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Web-Front/frontend/micro/mf-dfe-360.git
+  bucket_name: fe-mf-dfe-360
+  context: mf-dfe-360

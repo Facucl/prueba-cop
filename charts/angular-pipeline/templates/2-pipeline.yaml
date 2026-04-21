@@ -1,0 +1,148 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  description: | 
+    This pipeline clones a git repo, then echoes the README file to the stdout.
+  params:
+  - name: git-repo-source-url
+    type: string
+    description: The git repo URL to clone from
+  - name: git-repo-source-revision
+    description: The git branch where to clone from.
+  - name: tag-name
+    type: string
+    description: Image tag   
+  - name: bucket_name
+    type: string
+    description: S3 Bucket name to upload statics
+  - name: context
+    type: string
+    description: Context path where to expose the application
+  - name: build_context
+    type: string
+    description: environment where to build the npm application
+    default: "prod"
+  workspaces:
+  - name: git-basic-auth
+    description: |
+      This workspace contains basic auth configuration to be used by git-clone
+  - name: aws-credentials
+    description: |
+      This workspace contains the aws credentials to authenticate to ECR
+  - name: source-dir
+    description: | 
+      This workspace contains the cloned repo files, so they can be read by the
+      next task. 
+
+  tasks:
+  ###############
+  # GIT CLONE 
+  ###############   
+    - name: git-clone
+      taskRef:
+        name: tekton-git-clone
+        kind: ClusterTask    
+      params:
+        - name: url
+          value: $(params.git-repo-source-url)
+        - name: revision
+          value: $(params.git-repo-source-revision)
+      workspaces:
+        - name: output
+          workspace: source-dir
+        - name: basic-auth
+          workspace: git-basic-auth
+  ###############
+  # TRIVY SCAN (Solo informe, no falla)
+  ###############
+    - name: trivy-scan-repo
+      runAfter: ["git-clone"]
+      taskRef:
+        name: trivy-fs-scan-graphana
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: source-dir
+      params:
+        - name: REPORT_ENABLED
+          value: "true"
+
+        # Info cruda heredada del webhook/pipeline
+        - name: REPO_URL
+          value: $(params.git-repo-source-url)
+       # - name: ECR_REPOSITORY
+       #   value: $(params.ecr-repository)
+        - name: TAG_NAME
+          value: $(params.tag-name)
+       # - name: DEPLOY_TO
+       #   value: $(params.deploy-to)
+       # - name: BUILD_CONTEXT
+       #   value: $(params.build-context)
+        # Flags de Trivy
+        - name: TRIVY_ARGS
+          value:
+            - "--severity"
+            - "HIGH,CRITICAL"
+            - "--format"
+            - "table"
+            - "--scanners"
+            - "vuln,secret"
+            - "--no-progress"
+            - "--skip-dirs"
+            - ".git,node_modules,dist,build,target,.venv,vendor,bin,obj,.next"
+            - "--skip-files"
+            - "**/*.min.js,**/*.map"
+
+  ###############
+  # KANIKO BUILD
+  ###############
+    - name: build-push-kaniko
+      runAfter: ["trivy-scan-repo"]
+      taskRef:
+        name: kaniko
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: source-dir
+        - name: aws-credentials
+          workspace: aws-credentials            
+      params:
+        - name: IMAGE
+          value: "null" 
+        - name: EXTRA_ARGS
+          value: [ 
+            '--no-push',
+            '--build-arg' , "KLK_PROXY=http://proxysrv.gobiernocba.gov.ar:8080",
+            '--build-arg' , "KLK_NO_PROXY=.cba.gov.ar,.cluster.local,.gobiernocba.gov.ar,.kolektor.com.ar,.rentasweb.gob.ar,10.128.0.0/16,10.250.0.0/16,10.252.0.0/16,10.252.1.0/24,127.0.0.1,172.30.0.0/16",
+            '--build-arg' , "BUILD_CONTEXT=$(params.build_context)",
+            '--build-arg' , "CONTEXT=$(params.context)",
+            '--build-arg' , "BUCKET_NAME=$(params.bucket_name)"
+            ]
+
+  ###############
+  # LIMPIA CACHE
+  ###############
+    - name: limpia-cache
+      runAfter: ["build-push-kaniko"]
+      params:
+        - name: build_context
+          value: $(params.build_context)
+      taskSpec:
+        params:
+          - name: build_context
+            type: string
+        steps:
+          - name: check-build-context
+            image: registry-sip.cba.gov.ar:5000/curlimages:latest
+            script: |
+              #!/bin/sh -xe
+              echo "Contexto= $(params.build_context)"
+              if [ "$(params.build_context)" = "prod" ] || [ "$(params.build_context)" = "preprod" ]; then
+                curl -X POST "https://jenkins-rentas.rentasweb.gob.ar/job/DESARROLLO/job/Web/job/limpiar_cache_cloudflare_rentascordoba_gob_ar/build" \
+                  --user tekton-jenkins:11e25fd4e11357821c2ce81602da3cefe2
+              else
+                echo "No se esta ejecutando un deploy en PROD o PREPROD, no es necesario ejecutar el CURL"
+              fi
+

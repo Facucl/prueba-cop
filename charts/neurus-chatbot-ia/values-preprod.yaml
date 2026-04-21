@@ -1,0 +1,171 @@
+global:
+  enabled: true
+  projectName: neurus-chatbot-ia
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/neurus-rasa
+    tag: release-6.0.14
+    pullPolicy: IfNotPresent
+  namespace: neurus-chatbot-ia-preprod
+  clusterName: eks-preprod-rentas
+  dnsPolicy: "ClusterFirst"
+
+neurusrasaeks:
+  api:
+    enabled: true
+    nodeSelector:
+      node-type: ia
+    tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "ia"
+        effect: "NoSchedule"
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 5
+      targetCPU: 80
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 2000m
+        memory: 8Gi
+    
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: PREPROD
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: RASA_ENVIROMENT
+        value: "production"
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: username
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: password
+      - name: RDS_HOST
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: RDS_HOST
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: DB_NAME
+      - name: RASA_TRACKER_STORE_TYPE
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: RASA_TRACKER_STORE_TYPE
+      - name: RASA_TRACKER_STORE_DIALECT
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: RASA_TRACKER_STORE_DIALECT
+      - name: RASA_TRACKER_STORE_URL
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: RASA_TRACKER_STORE_URL
+      - name: RASA_TRACKER_STORE_DB
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: RASA_TRACKER_STORE_DB
+      - name: RASA_TRACKER_STORE_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: RASA_TRACKER_STORE_USERNAME	
+      - name: RASA_TRACKER_STORE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: RASA_TRACKER_STORE_PASSWORD
+      - name: RASA_TRACKER_STORE_LOGIN_DB
+        valueFrom:
+          secretKeyRef:
+            name: rasa-db-secret
+            key: RASA_TRACKER_STORE_LOGIN_DB
+
+    volumes:
+      - configMap:
+          defaultMode: 420
+          items:
+            - key: endpoints.yml
+              path: endpoints.yml
+          name: rasa-endpoints
+
+
+    livenessProbe:
+      enabled: true
+      path: /
+      port: 5005
+      scheme: HTTP
+      failureThreshold: 5
+      initialDelaySeconds: 150
+      successThreshold: 5
+      periodSeconds: 30
+      timeoutSeconds: 10
+    readinessProbe:
+      enabled: true
+      path: /
+      port: 5005
+      scheme: HTTP
+      failureThreshold: 5
+      initialDelaySeconds: 150
+      successThreshold: 5
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+
+# Bloque Service
+  service:
+    enabled: true
+    name: neurus-service
+    type: ClusterIP
+    port: 80
+    targetPort: 5005
+    labels:
+      environment: preprod
+
+# Bloque Ingress 
+  ingress:
+    enabled: true
+    className: "alb"
+    name: "ingress-neurus-preprod"
+    annotations:
+      kubernetes.io/ingress.class: alb
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-preprod
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/group.name: alb-eks-preprod
+      alb.ingress.kubernetes.io/group.order: "2"
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      alb.ingress.kubernetes.io/healthcheck-port: '5005'
+      alb.ingress.kubernetes.io/healthcheck-path: /
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+      alb.ingress.kubernetes.io/success-codes: '200'
+      
+    hosts:
+      - host: neurus-preprod.rentascordoba.gob.ar
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: 
+                name: neurus-service
+                port:
+                  number: 80

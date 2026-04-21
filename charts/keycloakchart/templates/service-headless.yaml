@@ -1,0 +1,22 @@
+{{- if .Values.serviceHeadless.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.serviceHeadless.name | default "keycloak-headless" }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.global.projectName | default "wsrest-svc-default" }}
+    {{- if .Values.serviceHeadless.labels }}
+    {{- toYaml .Values.serviceHeadless.labels | nindent 4 }}
+    {{- end }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: {{ .Values.serviceHeadless.publishNotReadyAddresses | default true }}
+  selector:
+    app: {{ .Values.global.projectName | default "wsrest-svc-default" }}
+  ports:
+    - name: jgroups
+      protocol: TCP
+      port: {{ .Values.serviceHeadless.port | default 7800 }}
+      targetPort: {{ .Values.serviceHeadless.targetPort | default 7800 }}
+{{- end }}

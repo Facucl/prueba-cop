@@ -1,0 +1,157 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "wsrestdeudar2"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "468776618910.dkr.ecr.us-east-1.amazonaws.com/wsrestdeudar2"
+    tag: 0.0.12
+    pullPolicy: IfNotPresent
+
+  # Namespace where release will be deployed
+  namespace: wsrestdeudar2-test
+  clusterName: desa
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: ""
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: ""
+
+java:
+  api:
+    enabled: true
+
+    replicaCount: 1
+
+    resources: 
+      requests:
+        cpu: 600m
+        memory: 2Gi
+      limits:
+        cpu: 1000m
+        memory: 3Gi
+
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+
+    terminationGracePeriodSeconds: 60
+    revisionHistoryLimit: 2
+
+    autoscaling:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    # Set custom container name
+    containerName: "java"
+
+    # Enable and configure security context of deployment. Just runAsUser and runAsGroup are defined
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      runAsGroup: 0
+      scc:
+        enabled: false
+
+    # Configure the livenessProbe just TCP for now and readinessProbe just HTTP for now
+    livenessProbe:
+      enabled: false
+      type: tcp
+      initialDelaySeconds: 15
+      periodSeconds: 20
+
+    readinessProbe:
+      enabled: false
+      type: http
+      path: /
+      initialDelaySeconds: 15
+      periodSeconds: 20
+
+    # Affinity Settings for django pods
+    # This should be a multi-line string matching the affinity section of a
+    # PodSpec.
+    affinity: null
+
+    # Toleration Settings for django pods
+    # This should be a multi-line string matching the Toleration array
+    # in a PodSpec.
+    # Example:
+    # tolerations: |
+    #   kubernetes.io/os: "linux"
+    tolerations: null
+
+    # nodeSelector labels for server pod assignment, formatted as a muli-line string.
+    # ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector
+    # Example:
+    # nodeSelector: |
+    #   node-lifecycle: "spot"
+    nodeSelector: null
+
+
+    envVars:
+      secretVars: {}  
+      configMapVars: {}
+      
+    env: 
+      - name: RUNTIME_ENVIRONMENT
+        value: DESA
+      - name: PROXY_URL
+        value: http://proxydesa.gobiernocba.gov.ar/
+
+    # volumeMounts: 
+    #   - mountPath: /opt/TOMCAT/conf/context.xml
+    #     name: context
+    #     subPath: context.xml
+    
+    # extraVolumes:
+    #   - name: context
+    #     type: secret
+    #     secretName: context
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: wsrestdeudar2.apps.desa.syc.local
+          paths:
+            - path: /
+              pathType: Prefix
+      # tls: [ ]
+      #   #  - secretName: chart-example-tls
+      #   #    hosts:
+      # #      - chart-example.local
+
+
+    # Enables a headless service to be used by
+    service:
+      enabled: true
+      # Service name
+      name: ""
+      # Port on which API server is listening
+      port: 80
+      # Target port to which the service should be mapped to
+      targetPort: 8080
+      # Extra annotations for the service definition. This should be a multi-line
+      # string formatted as a map of the annotations to apply to the service.
+      annotations: {}
+
+  # Enable configmaps you can create more than one configMap, inside item
+  configMaps:
+    enabled: false
+    items:
+      - enabled: false
+        name: ""
+        annotations: {}
+        #  helm.sh/hook: "pre-upgrade"
+        #  helm.sh/hook-weight: "1"
+        #  helm.sh/hook-delete-policy: "before-hook-creation"
+        data: {}
+        #  player_initial_lives: "3"
+        #  ui_properties_file_name: "user-interface.properties"
