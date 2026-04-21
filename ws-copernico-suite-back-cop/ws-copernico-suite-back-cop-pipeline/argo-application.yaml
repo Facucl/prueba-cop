@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ws-copernico-suite-back-cop-pipeline
+  namespace: openshift-gitops
+spec:
+  destination:
+    namespace: 'ws-copernico-suite-back-cop-pipeline'
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: charts/node-pipeline
+    repoURL: https://git.rentasweb.gob.ar/DevOps/helm-charts.git
+    helm:
+      valueFiles:
+        - ws-copernico-suite-back-cop/values-ws-copernico-suite-back-cop.yaml
+    targetRevision: master
+  project: rcb-gitops-projects-ws-copernico-suite-back-cop-pipeline
+  # syncPolicy: {}
+  syncPolicy:
+    automated:
+      selfHeal: false
+    syncOptions:
+      - Validate=false
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=false

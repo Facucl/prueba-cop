@@ -1,0 +1,18 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: webhook-{{ .Release.Name }}
+spec:
+  triggers:
+    - name: cel-trig-with-matches
+      interceptors:
+        - cel:
+            filter: |
+              body.ref == 'refs/heads/main' &&
+              (body.commits.any(c => c.modified.contains('values-desa.yaml')) ||
+               body.commits.any(c => c.modified.contains('values-test.yaml')) ||
+               body.commits.any(c => c.modified.contains('values-preprod.yaml')) ||
+               body.commits.any(c => c.modified.contains('values-prod.yaml')))
+      template:
+        ref: "{{ .Release.Name }}-trigger-template"
+

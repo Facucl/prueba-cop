@@ -1,0 +1,469 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  description: |
+    Pipeline aysgestiones-core: maven build+push image and deploy to Akka Serverless (preprod/prod).
+
+  params:
+    - name: git-repo-source-url
+      type: string
+      description: The git repo URL to clone from.
+    - name: git-repo-source-revision
+      description: The git branch where to clone from.
+    - name: ecr-registry
+      type: string
+      description: DockerHub registry host (e.g. docker.io)
+    - name: ecr-repository
+      type: string
+      description: Repository/name where to push the image (e.g. rentascbait/aysgestiones-core)
+    - name: tag-name
+      type: string
+      description: Image tag (e.g. release-1.0.0)
+    - name: deploy-to
+      type: string
+      description: Environments where to deploy the new release (e.g. "preprod", "prod")
+
+  workspaces:
+    - name: git-basic-auth
+      description: |
+        Basic auth configuration used by git-clone.
+    - name: source-dir
+      description: |
+        Cloned repo files shared across tasks.
+
+  tasks:
+
+    #############################
+    # CHECK DEPLOYMENT AVAILABILITY
+    #############################
+    - name: check-deployment-availability
+      params:
+        - name: deploy-to
+          value: $(params.deploy-to)
+      taskSpec:
+        params:
+          - name: deploy-to
+            type: string
+        steps:
+          - name: check-build-context
+            image: registry-sip.cba.gov.ar:5000/curlimages:latest
+            script: |
+              #!/bin/sh -xe
+              echo "Contexto= $(params.deploy-to)"
+
+              DEPLOY_ENVS="$(echo "$(params.deploy-to)" | xargs)"
+              NEED_CHECK=false
+              for ENV in $DEPLOY_ENVS; do
+                [ "$ENV" = "prod" ] && NEED_CHECK=true
+              done
+
+              if $NEED_CHECK; then
+                result=$(curl -sSf https://can-i-deploy.rentasweb.gob.ar/despliegue)
+                if [ "$result" = "OK" ]; then
+                  echo "Se puede desplegar en este momento"
+                else
+                  echo "No se puede desplegar en este momento"
+                  exit 1
+                fi
+              else
+                echo "No se esta ejecutando un deploy en PROD, no es necesario validar contra CAN I DEPLOY"
+              fi
+
+    ###############
+    # GIT CLONE
+    ###############
+    - name: git-clone
+      runAfter: ["check-deployment-availability"]
+      taskRef:
+        name: tekton-git-clone
+        kind: ClusterTask
+      params:
+        - name: url
+          value: $(params.git-repo-source-url)
+        - name: revision
+          value: $(params.git-repo-source-revision)
+      workspaces:
+        - name: output
+          workspace: source-dir
+        - name: basic-auth
+          workspace: git-basic-auth
+
+    ###############
+    # TRIVY SCAN
+    ###############
+    - name: trivy-scan-repo
+      runAfter: ["git-clone"]
+      taskRef:
+        name: trivy-fs-scan-graphana
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: source-dir
+      params:
+        - name: REPORT_ENABLED
+          value: "true"
+        - name: REPO_URL
+          value: $(params.git-repo-source-url)
+        - name: ECR_REPOSITORY
+          value: $(params.ecr-repository)
+        - name: TAG_NAME
+          value: $(params.tag-name)
+        - name: DEPLOY_TO
+          value: $(params.deploy-to)
+        - name: TRIVY_ARGS
+          value:
+            - "--severity"
+            - "HIGH,CRITICAL"
+            - "--format"
+            - "table"
+            - "--scanners"
+            - "vuln,secret"
+            - "--no-progress"
+            - "--skip-dirs"
+            - ".git,node_modules,dist,build,target,.venv,vendor,bin,obj,.next"
+            - "--skip-files"
+            - "**/*.min.js,**/*.map"
+
+    ###############
+    # MAVEN BUILD + PUSH con Docker-in-Docker (DinD)
+    #
+    # Replica exacta del pipeline ejemplo "Build and Push Docker Images":
+    #   - Sidecar DinD provee el Docker daemon al plugin fabric8
+    #   - Step 1: genera settings.xml con token Akka y proxy corporativo
+    #   - Step 2: mvn clean install → fabric8 construye y pushea a DockerHub
+    ###############
+    - name: maven-build-and-push
+      runAfter: ["trivy-scan-repo"]
+      params:
+        - name: ecr-registry
+          value: $(params.ecr-registry)
+        - name: ecr-repository
+          value: $(params.ecr-repository)
+        - name: tag-name
+          value: $(params.tag-name)
+      workspaces:
+        - name: source
+          workspace: source-dir
+      taskSpec:
+        params:
+          - name: ecr-registry
+            type: string
+          - name: ecr-repository
+            type: string
+          - name: tag-name
+            type: string
+        workspaces:
+          - name: source
+        volumes:
+          # Credenciales DockerHub — mismo Secret que usaba kaniko-dockerhub
+          - name: dockerhub-config
+            secret:
+              secretName: dockerhub-login
+              items:
+                - key: .dockerconfigjson
+                  path: config.json
+          # Almacenamiento interno del daemon DinD
+          - name: dind-storage
+            emptyDir: {}
+        sidecars:
+          # ── Docker-in-Docker daemon ─────────────────────────────────────────
+          # Provee /var/run/docker.sock al plugin fabric8 de Maven
+          - name: dind
+            image: registry-sip.cba.gov.ar:5000/docker:24-dind
+            securityContext:
+              privileged: true
+            env:
+              - name: DOCKER_TLS_CERTDIR
+                value: ""
+              - name: HTTP_PROXY
+                value: http://proxysrv.gobiernocba.gov.ar:8080
+              - name: HTTPS_PROXY
+                value: http://proxysrv.gobiernocba.gov.ar:8080
+              - name: NO_PROXY
+                value: localhost,127.0.0.1,.gobiernocba.gov.ar,.rentasweb.gob.ar,registry-sip.cba.gov.ar
+            volumeMounts:
+              - name: dind-storage
+                mountPath: /var/lib/docker
+
+        steps:
+
+          # ── Step 1: Genera settings.xml con token Akka y proxy ───────────────
+          - name: configure-akka-maven-repo
+            image: registry-sip.cba.gov.ar:5000/maven:3.9-eclipse-temurin-21
+            env:
+              - name: HOME
+                value: /tmp
+              - name: AKKA_REPO_TOKEN
+                valueFrom:
+                  secretKeyRef:
+                    name: akka-cli-token  # Secret existente en el cluster
+                    key: token
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+
+              mkdir -p $(workspaces.source.path)/.m2
+              cat > $(workspaces.source.path)/.m2/settings.xml << EOF
+              <?xml version="1.0" encoding="UTF-8"?>
+              <settings>
+                <proxies>
+                  <proxy>
+                    <id>gob-proxy</id>
+                    <active>true</active>
+                    <protocol>http</protocol>
+                    <host>proxysrv.gobiernocba.gov.ar</host>
+                    <port>8080</port>
+                    <nonProxyHosts>localhost|127.0.0.1|*.gobiernocba.gov.ar|*.rentasweb.gob.ar|registry-sip.cba.gov.ar</nonProxyHosts>
+                  </proxy>
+                  <proxy>
+                    <id>gob-proxy-https</id>
+                    <active>true</active>
+                    <protocol>https</protocol>
+                    <host>proxysrv.gobiernocba.gov.ar</host>
+                    <port>8080</port>
+                    <nonProxyHosts>localhost|127.0.0.1|*.gobiernocba.gov.ar|*.rentasweb.gob.ar|registry-sip.cba.gov.ar</nonProxyHosts>
+                  </proxy>
+                </proxies>
+                <profiles>
+                  <profile>
+                    <id>akka-profile</id>
+                    <activation>
+                      <activeByDefault>true</activeByDefault>
+                    </activation>
+                    <repositories>
+                      <repository>
+                        <id>akka-repository</id>
+                        <name>Akka Repository</name>
+                        <url>https://repo.akka.io/${AKKA_REPO_TOKEN}/secure</url>
+                      </repository>
+                    </repositories>
+                    <pluginRepositories>
+                      <pluginRepository>
+                        <id>akka-plugin-repository</id>
+                        <name>Akka Plugin Repository</name>
+                        <url>https://repo.akka.io/${AKKA_REPO_TOKEN}/secure</url>
+                      </pluginRepository>
+                    </pluginRepositories>
+                  </profile>
+                </profiles>
+              </settings>
+              EOF
+
+              echo "[INFO] settings.xml generado en $(workspaces.source.path)/.m2/settings.xml"
+
+          # ── Step 2: Maven build + push via fabric8 + DinD ───────────────────
+          - name: maven-build-push
+            image: registry-sip.cba.gov.ar:5000/maven:3.9-eclipse-temurin-21
+            env:
+              - name: HOME
+                value: /tmp
+              # Conecta al daemon DinD via TCP (localhost:2375)
+              - name: DOCKER_HOST
+                value: tcp://localhost:2375
+              # Credenciales DockerHub para el plugin fabric8
+              - name: DOCKER_CONFIG
+                value: /tmp/.docker
+              # Proxy para Maven y JVM
+              - name: HTTPS_PROXY
+                value: http://proxysrv.gobiernocba.gov.ar:8080
+              - name: HTTP_PROXY
+                value: http://proxysrv.gobiernocba.gov.ar:8080
+              - name: NO_PROXY
+                value: localhost,127.0.0.1,.gobiernocba.gov.ar,.rentasweb.gob.ar,registry-sip.cba.gov.ar
+              - name: MAVEN_OPTS
+                value: >-
+                  -Dhttps.proxyHost=proxysrv.gobiernocba.gov.ar
+                  -Dhttps.proxyPort=8080
+                  -Dhttp.proxyHost=proxysrv.gobiernocba.gov.ar
+                  -Dhttp.proxyPort=8080
+                  -Dhttp.nonProxyHosts=localhost|127.0.0.1|*.gobiernocba.gov.ar|*.rentasweb.gob.ar|registry-sip.cba.gov.ar
+              - name: DOCKER_REGISTRY
+                value: $(params.ecr-registry)
+              - name: DOCKER_REPOSITORY
+                value: $(params.ecr-repository)
+              - name: TAG_NAME
+                value: $(params.tag-name)
+            volumeMounts:
+              # Credenciales DockerHub
+              - name: dockerhub-config
+                mountPath: /tmp/.docker
+                readOnly: true
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+
+              echo "[INFO] Esperando que el daemon Docker (DinD) esté listo en localhost:2375..."
+              ATTEMPTS=0
+              until curl -sf http://localhost:2375/version > /dev/null 2>&1; do
+                ATTEMPTS=$((ATTEMPTS+1))
+                if [ $ATTEMPTS -ge 30 ]; then
+                  echo "[ERROR] Docker daemon no respondió después de 60 segundos."
+                  exit 1
+                fi
+                echo "[INFO] Intento ${ATTEMPTS}/30 - esperando..."
+                sleep 2
+              done
+              echo "[INFO] Docker daemon listo (intentos: ${ATTEMPTS})."
+
+              echo "[INFO] Imagen destino: ${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}:${TAG_NAME}"
+
+              # Obtener Docker CLI desde el sidecar DinD via TCP
+              # No usamos apt-get (bloqueado por proxy) sino que copiamos el binario del sidecar
+              if ! command -v docker &> /dev/null; then
+                echo "[INFO] Obteniendo Docker CLI desde el sidecar DinD..."
+                curl -sf http://localhost:2375/v1.41/info > /dev/null
+                curl -fsSL http://localhost:2375/_ping > /dev/null
+                # Descargar el binario docker CLI estático via proxy
+                curl -fsSL \
+                  --proxy http://proxysrv.gobiernocba.gov.ar:8080 \
+                  "https://download.docker.com/linux/static/stable/x86_64/docker-24.0.9.tgz" \
+                  | tar xz --strip-components=1 -C /usr/local/bin docker/docker
+                chmod +x /usr/local/bin/docker
+                echo "[INFO] Docker CLI instalado: $(docker --version)"
+              fi
+
+              # Build: compila el JAR y construye la imagen Docker
+              mvn -B -V -ntp -T 1C \
+                -s $(workspaces.source.path)/.m2/settings.xml \
+                -f $(workspaces.source.path)/pom.xml \
+                clean install -DskipTests \
+                -Ddocker.registry="${DOCKER_REGISTRY}" \
+                -Ddocker.repository="${DOCKER_REPOSITORY}" \
+                -Ddocker.tag="${TAG_NAME}"
+
+              # Push: tag y push a DockerHub usando Docker CLI
+              # (equivalente al step "Tag and push images to Docker Hub" del pipeline modelo)
+              FULL_IMAGE="${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}:${TAG_NAME}"
+
+              echo "[INFO] Taggeando imagen local -> ${FULL_IMAGE}"
+              docker tag "aysgestiones-core:${TAG_NAME}" "${FULL_IMAGE}"
+
+              echo "[INFO] Pusheando ${FULL_IMAGE}..."
+              docker push "${FULL_IMAGE}"
+
+              echo "[INFO] Build + push finalizado: ${DOCKER_REGISTRY}/${DOCKER_REPOSITORY}:${TAG_NAME}"
+
+    ######################
+    # AKKA DEPLOY (SOLO preprod/prod)
+    ######################
+    - name: akka-deploy
+      runAfter: ["maven-build-and-push"]
+      params:
+        - name: deploy-to
+          value: $(params.deploy-to)
+        - name: ecr-registry
+          value: $(params.ecr-registry)
+        - name: ecr-repository
+          value: $(params.ecr-repository)
+        - name: tag-name
+          value: $(params.tag-name)
+      workspaces:
+        - name: source-dir
+          workspace: source-dir
+      taskSpec:
+        params:
+          - name: deploy-to
+            type: string
+          - name: ecr-registry
+            type: string
+          - name: ecr-repository
+            type: string
+          - name: tag-name
+            type: string
+        workspaces:
+          - name: source-dir
+        volumes:
+          - name: akka-env-config
+            secret:
+              secretName: akka-env-config
+        steps:
+          - name: akka-serverless-deploy
+            image: registry-sip.cba.gov.ar:5000/akkacli:0.0.16
+            env:
+              - name: AKKA_HOME
+                value: /tmp/.akka
+              - name: HOME
+                value: /tmp
+            volumeMounts:
+              - name: akka-env-config
+                mountPath: /akka-env
+                readOnly: true
+            script: |
+              #!/usr/bin/env bash
+              set -euo pipefail
+
+              DEPLOY_ENVS="$(echo "$(params.deploy-to)" | xargs)"
+
+              NEED_AKKA=false
+              for ENV in $DEPLOY_ENVS; do
+                [[ "$ENV" == "preprod" ]] && NEED_AKKA=true
+                [[ "$ENV" == "prod" ]]    && NEED_AKKA=true
+              done
+
+              if [[ "$NEED_AKKA" != "true" ]]; then
+                echo "[INFO] No preprod/prod requested -> skipping Akka Serverless deploy."
+                exit 0
+              fi
+
+              echo "[INFO] preprod/prod detected. Proceeding with Akka Serverless deploy."
+              akka version
+              mkdir -p "${AKKA_HOME}"
+
+              IMAGE="$(params.ecr-registry)/$(params.ecr-repository):$(params.tag-name)"
+              echo "[INFO] Image to deploy: $IMAGE"
+
+              read_secret_key() {
+                local key="$1"
+                local path="/akka-env/${key}"
+                if [[ ! -f "$path" ]]; then
+                  echo "[ERROR] Missing key '${key}' in Secret akka-env-config (expected file $path)"
+                  exit 1
+                fi
+                cat "$path"
+              }
+
+              for ENV in $DEPLOY_ENVS; do
+                case "$ENV" in
+                  preprod|prod) ;;
+                  *) continue ;;
+                esac
+
+                AKKA_TOKEN="$(read_secret_key "${ENV}_token")"
+                AKKA_PROJECT="$(read_secret_key "${ENV}_akkaproject")"
+
+                if [[ -z "$AKKA_TOKEN" ]]; then
+                  echo "[ERROR] ${ENV}_token is empty in akka-env-config."
+                  exit 1
+                fi
+                if [[ -z "$AKKA_PROJECT" ]]; then
+                  echo "[ERROR] ${ENV}_akkaproject is empty in akka-env-config."
+                  exit 1
+                fi
+
+                AMBIENTE_UPPER="$(echo "$ENV" | tr '[:lower:]' '[:upper:]')"
+                echo "[INFO] --- Deploying env=$ENV | Akka project=$AKKA_PROJECT ---"
+
+                akka auth use-token "${AKKA_TOKEN}" --disable-prompt
+
+                SRC_PROJECT_YAML="$(workspaces.source-dir.path)/devops/akka/${ENV}/project.yaml"
+                if [[ ! -f "$SRC_PROJECT_YAML" ]]; then
+                  echo "[ERROR] Missing $SRC_PROJECT_YAML in repo workspace."
+                  exit 1
+                fi
+
+                TMP_PROJECT="/tmp/project-${ENV}.yaml"
+                cp "$SRC_PROJECT_YAML" "$TMP_PROJECT"
+                sed -i "s|__IMAGE__|${IMAGE}|g" "$TMP_PROJECT"
+                sed -i "s|__AMBIENTE__|${AMBIENTE_UPPER}|g" "$TMP_PROJECT"
+
+                akka project apply \
+                  --project "${AKKA_PROJECT}" \
+                  --disable-prompt \
+                  -f "$TMP_PROJECT"
+
+                echo "[INFO] Done: $ENV"
+              done
+
+              echo "[INFO] Akka deploy stage finished successfully."

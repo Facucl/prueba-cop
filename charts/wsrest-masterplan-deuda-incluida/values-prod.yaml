@@ -1,0 +1,152 @@
+global:
+  enabled: true
+  projectName: wsrest-masterplan-deuda-incluida
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/wsrest-masterplan-deuda-incluida
+    tag: release-0.0.002
+    pullPolicy: IfNotPresent
+  namespace: wsrest-masterplan-deuda-incluida-prod
+  clusterName: eks-prod-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+nodeeks:
+  api:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: PROD
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: "8080"
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "3000"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+      - name: OAUTH_TOKEN_CLIENTID
+        valueFrom:
+          secretKeyRef:
+            name: oauthcredentials-wsrest-masterplan-deuda-incluida-prod
+            key: OAUTH_TOKEN_CLIENTID
+      - name: OAUTH_TOKEN_CLIENTSECRET
+        valueFrom:
+          secretKeyRef:
+            name: oauthcredentials-wsrest-masterplan-deuda-incluida-prod
+            key: OAUTH_TOKEN_CLIENTSECRET
+      - name: OAUTH_TOKEN_PASS
+        valueFrom:
+          secretKeyRef:
+            name: oauthcredentials-wsrest-masterplan-deuda-incluida-prod
+            key: OAUTH_TOKEN_PASS
+      - name: OAUTH_TOKEN_USER
+        valueFrom:
+          secretKeyRef:
+            name: oauthcredentials-wsrest-masterplan-deuda-incluida-prod
+            key: OAUTH_TOKEN_USER
+      - name: ROLE_API
+        valueFrom:
+          secretKeyRef:
+            name: oauthcredentials-wsrest-masterplan-deuda-incluida-prod
+            key: ROLE_API
+      - name: ROLES_USER_CONTRIBUTOR
+        valueFrom:
+          secretKeyRef:
+            name: oauthcredentials-wsrest-masterplan-deuda-incluida-prod
+            key: ROLES_USER_CONTRIBUTOR
+
+  livenessProbe:
+    enabled: true
+    path: /wsrest-masterplan-deuda-incluida/healthz
+    port: 3000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  readinessProbe:
+    enabled: true
+    path: /wsrest-masterplan-deuda-incluida/healthz
+    port: 3000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 30
+    successThreshold: 1
+    periodSeconds: 30
+    timeoutSeconds: 10
+
+  volumeMounts: {}
+  extraVolumes: {}
+
+  ingress:
+    enabled: true
+    className: alb
+    name: ingress-sip-prod
+    labels: {}
+    annotations:
+      kubernetes.io/ingress.class: "alb"
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-prod
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: alb-eks-prod
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/cors-allow-origin: "https://rentascordoba.gob.ar"
+      nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal.rentascordoba.gob.ar
+        paths:
+          - path: /wsrest-masterplan-deuda-incluida
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrest-masterplan-deuda-incluida-service
+                port:
+                  number: 80
+      - host: backend-cloud.rentascordoba.gob.ar
+        paths:
+          - path: /wsrest-masterplan-deuda-incluida
+            pathType: Prefix
+            backend:
+              service:
+                name: wsrest-masterplan-deuda-incluida-service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: wsrest-masterplan-deuda-incluida-service
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+    labels:
+      environment: prod

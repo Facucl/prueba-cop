@@ -1,0 +1,156 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  description: | 
+    This pipeline clones a git repo, then echoes the README file to the stdout.
+  params:
+  - name: git-repo-source-url
+    type: string
+    description: The git repo URL to clone from.
+  - name: git-repo-source-revision
+    description: The git branch where to clone from.
+  - name: tag-name
+    type: string
+    description: Image tag   
+  - name: bucket-name
+    type: string
+    description: S3 Bucket name to upload statics
+  - name: context
+    type: string
+    description: Context path where to expose the application
+  - name: node-version
+    type: string
+    description: Node version used to build the application
+  - name: build_context
+    type: string
+    description: environment where to build the npm application 
+  workspaces:
+  - name: git-basic-auth
+    description: |
+      This workspace contains basic auth configuration to be used by git-clone
+  - name: aws-credentials
+    description: |
+      This workspace contains the aws credentials to authenticate to ECR
+  - name: source-dir
+    description: | 
+      This workspace contains the cloned repo files, so they can be read by the
+      next task.   
+
+  tasks:
+  #############################
+  # CHECK DEPLOYMENT AVAILABILITY
+  #############################
+    # - name: check-deployment-availability
+    #   params:
+    #     - name: build_context
+    #       value: $(params.build_context)
+    #   taskSpec:
+    #     params:
+    #       - name: build_context
+    #         type: string
+    #     steps:
+    #     - name: check-build-context
+    #       image: registry-sip.cba.gov.ar:5000/curlimages:latest
+    #       script: |
+    #         #!/bin/sh -xe
+    #         echo "Contexto= $(params.build_context)"
+    #         if [ "$(params.build_context)" == "prod" ]; then
+    #           result=$(curl -sSf https://can-i-deploy.rentasweb.gob.ar/despliegue)
+    #           if [ "$result" == "OK" ]; then
+    #             echo "Se puede desplegar en este momento"
+    #           else
+    #             echo "No se puede desplegar en este momento"
+    #             exit 1
+    #           fi
+    #         else
+    #           echo "No se esta ejecutando un deploy en PROD, no es necesario validar contra CAN I DEPLOY"
+    #         fi
+  ###############
+  # GIT CLONE 
+  ###############   
+    - name: git-clone
+      taskRef:
+        name: tekton-git-clone
+        kind: ClusterTask    
+      params:
+        - name: url
+          value: $(params.git-repo-source-url)
+        - name: revision
+          value: $(params.git-repo-source-revision)
+      workspaces:
+        - name: output
+          workspace: source-dir
+        - name: basic-auth
+          workspace: git-basic-auth
+                   
+  ###############
+  # TRIVY SCAN (Solo informe, no falla)
+  ###############
+    - name: trivy-scan-repo
+      runAfter: ["git-clone"]
+      taskRef:
+        name: trivy-fs-scan
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: source-dir
+      params:
+        # Los argumentos por defecto de la ClusterTask (`--severity HIGH,CRITICAL --format table`)
+        # ya no causarán una falla. Puedes ajustarlos o dejarlos como están.
+        - name: TRIVY_ARGS
+          value:
+            - "--severity"
+            - "HIGH,CRITICAL" # Sigue mostrando solo las de alta y crítica
+            - "--format"
+            - "table"         # Formato de tabla en la salida del log
+            # --- IMPORTANTE ---
+            # No incluyas `--exit-code 1` aquí para que no falle el pipeline.
+            # Puedes añadir `--output` si quieres guardar el informe en un archivo dentro del workspace.
+            # - "--output"
+            # - "trivy-report.txt"
+            # ------------------
+  
+
+  # ###############
+  # # NPM BUILD
+  # ###############
+    - name: build-npm
+      runAfter: ["trivy-scan-repo"]
+      taskRef:
+        name: npm
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: source-dir           
+      params:
+        - name: IMAGE
+          value: "docker.io/library/node:$(params.node-version)-alpine"
+        - name: SCRIPT
+          value: |
+            npm config set strict-ssl false
+            ls -ltr
+            npm ci 
+            npm run eslint
+            npm run test:coverage
+            npm run build
+
+  ######################
+  # Update deploy values 
+  ######################
+    - name: aws-cli
+      runAfter: ["build-npm"]
+      taskRef:
+        name: aws-cli
+        kind: ClusterTask
+      params:
+        - name: SCRIPT
+          value: |
+            aws s3 cp /workspace/source/build s3://$(params.bucket-name)-$(params.build-context)/$(params.context) --metadata-directive REPLACE --recursive --cache-control max-age=10,s-maxage=10
+
+      workspaces:
+        - name: source
+          workspace: source-dir
+        - name: secrets
+          workspace: aws-credentials

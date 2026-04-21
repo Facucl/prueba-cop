@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/tasa360/fe-tasa360-backoffice.git
+  bucket_name: fe-tasa360-backoffice
+  context: tasa360BO

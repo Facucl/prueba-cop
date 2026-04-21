@@ -1,0 +1,13 @@
+apiVersion: v2
+name: wsrestdaopsrm
+version: 0.0.1
+Appversion: latest
+description: >
+    This Chart is to deploy WSRestDaoPsrm proyect based on java Helm chart.
+keywords:
+  - java
+dependencies:
+- name: java
+  version: 0.0.1
+  # repository: "http://--/"
+  repository: "file://../java"

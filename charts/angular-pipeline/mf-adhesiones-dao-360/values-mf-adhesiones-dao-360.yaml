@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/DAO/frontend/micro/mf-adhesiones-dao-360.git
+  bucket_name: fe-mf-adhesiones-dao-360
+  context: mf-adhesiones-dao-360

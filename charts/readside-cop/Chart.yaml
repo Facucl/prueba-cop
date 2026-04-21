@@ -1,0 +1,13 @@
+apiVersion: v2
+name: readside-cop
+version: 0.0.1
+Appversion: latest
+description: >
+    This Chart is to deploy readside-cop proyect based on scala Helm chart.
+keywords:
+  - scala
+dependencies:
+- name: scala
+  version: 0.0.1
+  # repository: "http://--/"
+  repository: "file://../scala"

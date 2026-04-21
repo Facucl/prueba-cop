@@ -1,0 +1,21 @@
+{{- if eq $.Values.global.clusterName "cicd" -}}
+{{ range $group, $app := .Values.auth -}}
+{{range .applications -}}
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ $group }}-{{ . }}-pipeline-role 
+  namespace: {{ . }}-pipeline
+
+subjects:
+  - kind: Group
+    apiGroup: rbac.authorization.k8s.io
+    name: {{ $group }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pipeline-role
+---
+{{- end }}
+{{- end }}
+{{- end }}

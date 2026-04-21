@@ -1,0 +1,4 @@
+project:
+  repository_url: https://gitlab-rentas.rentasweb.gob.ar/servidores/automatizaciones/glpi_s3_uploader.git
+  ecr_registry: 634937925704.dkr.ecr.us-west-2.amazonaws.com
+  ecr_repository: glpi-s3-uploader

@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/copernico/ws-rules-manager-read-admins.git
+  ecr_registry: registry-sip.cba.gov.ar:5000
+  ecr_repository: ws-rules-manager-read-admins-cop

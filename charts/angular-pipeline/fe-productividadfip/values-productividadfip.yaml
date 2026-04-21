@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/DESARROLLOFIP/mf_app_fe.git
+  bucket_name: fe-productividadfip
+  context: fe-productividadfip

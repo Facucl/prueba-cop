@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/fta/fe-ftago.git
+  bucket_name: fe-ftago
+  context: fiscaliago

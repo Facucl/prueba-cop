@@ -1,0 +1,12 @@
+apiVersion: v2
+name: valkey-rentas
+version: 0.0.1
+appVersion: latest
+description: >
+  This Chart is to deploy valkey-rentas project based on valkey Helm chart.
+keywords:
+  - valkey
+dependencies:
+  - name: valkey
+    version: 0.0.1
+    repository: "file://../valkey"

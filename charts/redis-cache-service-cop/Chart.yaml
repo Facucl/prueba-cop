@@ -1,0 +1,8 @@
+apiVersion: v2
+name: redis-cache-service
+version: 0.0.1
+dependencies:
+- name: nodeeks
+  version: 0.0.1
+  # repository: "http://--/"
+  repository: "file://../nodeeks"

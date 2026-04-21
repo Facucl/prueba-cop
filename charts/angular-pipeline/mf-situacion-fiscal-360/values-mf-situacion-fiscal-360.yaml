@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Equipo-Web-Front/frontend/micro/mf-situacion-fiscal-360.git
+  bucket_name: fe-mf-situacion-fiscal-360
+  context: mf-situacion-fiscal-360

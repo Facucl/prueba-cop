@@ -1,0 +1,130 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "ws-sujeto-v8-cop"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/ws-sujeto-v8-cop"
+    tag: release-2.3.5
+    pullPolicy: Always
+
+  # Namespace where release will be deployed
+  namespace: ws-sujeto-v8-cop-test
+  clusterName: test-ws-sujeto-v8-cop
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "ClusterFirst"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+
+node:
+  api:
+    resources: 
+      limits:
+        cpu: 500m
+        memory: 2Gi
+    # commandArgs custom command argument on deployment pod template
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      runAsGroup: 0
+      scc:
+        enabled : true
+        rootUser: true
+
+    envVars:
+      secretVars:
+        - name: sujeto-v8-cop-secret-test
+      configMapVars: {}
+    env:
+      - name: OBNS_PSRM
+        value: "ON"
+
+    livenessProbe:
+      enabled: true
+      path: /comunicador/healthz
+      port: 3001
+      failureThreshold: 30
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 1
+
+    readinessProbe:
+      enabled: true
+      path: /comunicador/healthz
+      port: 3001
+      failureThreshold: 3
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+
+    volumeMounts: 
+      - mountPath: /app/dmn/interes.dmn
+        name: interes
+        subPath: interes.dmn
+        readOnly: true 
+      - mountPath: /app/dmn/prescripcion.dmn
+        name: prescripcion
+        subPath: prescripcion.dmn
+        readOnly: true  
+
+    extraVolumes:
+      - name: interes
+        type: configMap
+        configMapName: interes
+        defaultMode: 420
+      - name: prescripcion
+        type: configMap
+        configMapName: prescripcion
+        defaultMode: 420  
+
+
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: 
+        kubernetes.io/ingress.class: nginx
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "3000"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "3000"
+        nginx.ingress.kubernetes.io/server-snippets: |
+         location / {
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_http_version 1.1;
+          proxy_set_header X-Forwarded-Host $http_host;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_set_header Host $host;
+          proxy_set_header Connection "upgrade";
+          proxy_cache_bypass $http_upgrade;
+         }
+      hosts: 
+        - host: "copernico-rentas.apps.apps.test-rentas-os.gobiernocba.gov.ar"
+          paths:
+            - path: /informe-deuda-sujeto
+              pathType: Prefix
+            - path: /comunicador
+              pathType: Prefix
+  
+             
+                
+    service:
+      port: 3001           
+      targetPort: 3001
+

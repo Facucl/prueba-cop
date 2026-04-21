@@ -1,0 +1,6 @@
+global:
+  clusterName: "prod-debug"
+
+auth:  
+  deploy_copernico:
+    applications:

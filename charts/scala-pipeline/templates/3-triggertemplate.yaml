@@ -1,0 +1,64 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: "{{ .Release.Name }}-trigger-template"
+spec:
+  params:
+    - name: tag-name 
+      description: The created tag
+    - name: deploy-to
+      description: environments to deploy
+      default: desa
+    - name: git-repo-source-url 
+      description: The git repository url
+    - name: ecr-registry
+      description: Ecr registry where to login
+    - name: ecr-repository
+      description: Tag to push the image.
+    - name: sbt-cmd
+      description: SBT command to run
+    - name: dockerfile
+      description: Dockerfile custom location
+      default: ./Dockerfile
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+
+      metadata:    
+        generateName: "{{ .Release.Name }}-run"
+      spec:
+        serviceAccountName: tekton-build 
+        pipelineRef:
+          name: {{ .Release.Name }}
+        workspaces:
+        - name: git-basic-auth
+          secret:
+            secretName: git-basic-auth-secret
+        - name: aws-credentials
+          secret:
+            secretName: aws-creds
+        - name: source-dir
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+              - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 1Gi        
+        params:
+        - name: git-repo-source-url
+          value: $(tt.params.git-repo-source-url)
+        - name: git-repo-source-revision
+          value: $(tt.params.tag-name)
+        - name: ecr-registry  
+          value: $(tt.params.ecr-registry)
+        - name: ecr-repository
+          value: $(tt.params.ecr-repository)
+        - name: tag-name
+          value: $(tt.params.tag-name)
+        - name: deploy-to
+          value: $(tt.params.deploy-to)
+        - name: sbt-cmd
+          value: $(tt.params.sbt-cmd)
+        - name: dockerfile
+          value: $(tt.params.dockerfile)

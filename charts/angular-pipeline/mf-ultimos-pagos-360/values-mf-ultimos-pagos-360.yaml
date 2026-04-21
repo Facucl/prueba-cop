@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Pagos/frontend/micro/mf-ultimos-pagos-360.git
+  bucket_name: fe-mf-ultimos-pagos-360
+  context: mf-ultimos-pagos-360

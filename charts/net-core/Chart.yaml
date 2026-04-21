@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: Net Core Helm Chart
+name: netcore
+version: 0.0.1
+keywords:
+  - netcore

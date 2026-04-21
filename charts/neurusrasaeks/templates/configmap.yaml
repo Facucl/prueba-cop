@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rasa-endpoints
+  namespace: {{ .Values.global.namespace }}
+data:
+  endpoints.yml: |
+    tracker_store:
+      type: SQL
+      dialect: "postgresql"
+      url: ${RDS_HOST}
+      db: ${DB_NAME}
+      username: ${DB_USER}
+      password: ${DB_PASSWORD}
+      login_db: "postgres"

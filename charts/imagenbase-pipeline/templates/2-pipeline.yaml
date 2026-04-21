@@ -1,0 +1,72 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  description: | 
+    This pipeline clones a git repo, then echoes the README file to the stdout.
+  params:
+  - name: git-repo-source-url
+    type: string
+    description: The git repo URL to clone from.
+  - name: git-repo-source-revision
+    description: The git branch where to clone from.
+  - name: ecr-registry
+    type: string
+    description: ECR Registry URL where to push the image
+  - name: ecr-repository
+    type: string
+    description: ECR Repository where to push the image
+  - name: image-tag-name
+    type: string
+    description: Image tag to upload the image
+  workspaces:
+  - name: git-basic-auth
+    description: |
+      This workspace contains basic auth configuration to be used by git-clone
+  - name: aws-credentials
+    description: |
+      This workspace contains the aws credentials to authenticate to ECR
+  - name: source-dir
+    description: | 
+      This workspace contains the cloned repo files, so they can be read by the
+      next task.   
+
+  tasks:
+  ###############
+  # GIT CLONE 
+  ###############   
+    - name: git-clone
+      taskRef:
+        name: tekton-git-clone
+        kind: ClusterTask    
+      params:
+        - name: url
+          value: $(params.git-repo-source-url)
+        - name: revision
+          value: $(params.git-repo-source-revision)
+      workspaces:
+        - name: output
+          workspace: source-dir
+        - name: basic-auth
+          workspace: git-basic-auth         
+  
+
+  # ###############
+  # # KANIKO BUILD
+  # ###############
+    - name: build-push-kaniko
+      runAfter: ["git-clone"]
+      taskRef:
+        name: kaniko
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: source-dir
+        - name: aws-credentials
+          workspace: aws-credentials            
+      params:
+        - name: IMAGE
+          value: "$(params.ecr-registry)/$(params.ecr-repository):$(params.image-tag-name)" 
+        - name: EXTRA_ARGS
+          value: [ '--build-arg' , "GOB_PROXY=http://proxysrv.gobiernocba.gov.ar:8080", '--build-arg' , "HTTPS_PROXY_PORT=8080"]

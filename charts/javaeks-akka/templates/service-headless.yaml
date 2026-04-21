@@ -1,0 +1,26 @@
+{{- if .Values.serviceHeadless.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  # Asegúrate de que en values.yaml el nombre sea: {{ .Values.global.projectName }}-headless
+  name: {{ .Values.serviceHeadless.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.global.projectName }}-app
+spec:
+  clusterIP: None
+  # Importante: Akka necesita ver los pods incluso antes de que estén "Ready" para formar el cluster
+  publishNotReadyAddresses: {{ .Values.serviceHeadless.publishNotReadyAddresses | default true }}
+  selector:
+    # DEBE coincidir con el label del template de tu Deployment corregido
+    app: {{ .Values.global.projectName }}-app
+  ports:
+    - name: jgroups
+      protocol: TCP
+      port: 7800
+      targetPort: jgroups
+    - name: management
+      protocol: TCP
+      port: 8558
+      targetPort: management # Coincide con el puerto 8558 del Deployment
+{{- end }}

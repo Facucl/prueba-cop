@@ -1,0 +1,95 @@
+{{- if and .Values.api.enabled .Values.global.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.global.projectName }}-app
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/name: {{ .Values.global.projectName }}-app
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+    app.kubernetes.io/component: app
+spec:
+  replicas: {{ .Values.api.replicaCount }}  
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.global.projectName }}-app
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/managed-by: {{ .Release.Service }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+        app.kubernetes.io/name: {{ .Values.global.projectName }}-app
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/version: {{ .Chart.AppVersion }}
+        app.kubernetes.io/component: app
+    spec:
+      {{- if .Values.api.securityContext.enabled }}
+      securityContext:
+        runAsUser: {{ .Values.api.securityContext.runAsUser }}
+        runAsGroup: {{ .Values.api.securityContext.runAsGroup }}
+      {{- end }}     
+      terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds | default "300" }}     
+      {{ template "api.affinity" . }}
+      {{ template "api.tolerations" . }}
+      {{ template "api.nodeselector" . }}
+      containers:
+        - name: {{ .Values.api.containerName | default .Chart.Name | quote }}
+          image: {{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy | default "IfNotPresent" | quote }}
+          {{- if or .Values.api.envVars.secretVars .Values.api.envVars.configMapVars }}
+          envFrom:
+          {{- template "api.secretName" . }}
+          {{- template "api.configMapName" . }}
+          {{- end }}
+          {{- template "api.env" . }}
+          
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.service.targetPort }}
+              protocol: TCP
+
+          {{ if .Values.api.livenessProbe.enabled }}
+          livenessProbe:
+            failureThreshold: {{.Values.api.livenessProbe.failureThreshold | default 1}}
+            initialDelaySeconds: {{.Values.api.livenessProbe.initialDelaySeconds}}
+            periodSeconds: {{.Values.api.livenessProbe.periodSeconds}}
+            timeoutSeconds: {{.Values.api.livenessProbe.timeoutSeconds}}
+            successThreshold: {{.Values.api.livenessProbe.successThreshold}}
+            httpGet:
+              path: {{.Values.api.livenessProbe.path}}
+              port: {{.Values.api.livenessProbe.port}}
+              scheme: {{.Values.api.livenessProbe.scheme | default "HTTP"}}
+          {{- end }}
+          {{- if .Values.api.readinessProbe.enabled }}
+          readinessProbe:
+            failureThreshold: {{.Values.api.readinessProbe.failureThreshold | default 1}}
+            initialDelaySeconds: {{.Values.api.readinessProbe.initialDelaySeconds}}
+            periodSeconds: {{.Values.api.readinessProbe.periodSeconds}}
+            timeoutSeconds: {{.Values.api.readinessProbe.timeoutSeconds}}
+            successThreshold: {{.Values.api.readinessProbe.successThreshold}}
+            httpGet:
+              path: {{.Values.api.readinessProbe.path}}
+              port: {{.Values.api.readinessProbe.port}}
+              scheme: {{.Values.api.readinessProbe.scheme | default "HTTP"}}
+          {{- end }}  
+              
+          {{ template "api.resources" . }}
+      {{ template "api.mounts" . }}
+
+      {{- if .Values.global.dnsPolicy }}
+      dnsPolicy: {{ .Values.global.dnsPolicy | quote }}
+      {{- end }}
+      {{- if .Values.global.dnsConfig }}
+      dnsConfig:
+      {{- tpl .Values.global.dnsConfig . | nindent 8 }}
+      {{- end }}
+      {{ template "api.volumes" . }}
+
+  {{- end }}
+

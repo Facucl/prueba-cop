@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/RENTUP/crm-frontend-exenciones.git
+  bucket_name: fe-exenciones-crm
+  context: exencion-unica

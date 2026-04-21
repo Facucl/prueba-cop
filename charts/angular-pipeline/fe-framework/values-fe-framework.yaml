@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/rentas-angularjs-restapi/bootstrap.git
+  bucket_name: fe-framework
+  context: fe-framework

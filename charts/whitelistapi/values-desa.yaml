@@ -1,0 +1,92 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "whitelistapi-desa"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/whitelistapi"
+    tag: release-0.0.14
+    pullPolicy: Always
+
+  # Namespace where release will be deployed
+  namespace: whitelistapi-desa
+  clusterName: desa-rentas
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "ClusterFirst"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+
+node:
+  api:
+    resources: 
+      limits:
+        cpu: 250m
+        memory: 1Gi
+    # commandArgs custom command argument on deployment pod template
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      runAsGroup: 0
+      scc:
+        enabled : true
+        rootUser: true
+
+    envVars:
+      secretVars: 
+        - name: whitelistfetcher-secret-desa
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: false
+      path: /
+      port: 5000
+      failureThreshold: 30
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 1
+
+    readinessProbe:
+      enabled: false
+      path: /
+      port: 5000
+      failureThreshold: 3
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+
+    volumeMounts: {}
+    extraVolumes: {}
+
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+         
+
+      hosts: 
+        - host: "default.apps.apps.desa-rentas.gobiernocba.gov.ar"
+          paths:
+            - path: /api/whitelist
+              pathType: Prefix
+
+    service:
+      port: 5000
+      targetPort: 5000

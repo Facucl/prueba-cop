@@ -1,0 +1,24 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: "{{ .Release.Name }}-trigger-template"
+  namespace: pipeline-poc
+spec:
+  params:
+    - name: environment
+      description: Ambiente (desa, test, preprod, prod)
+    - name: yaml-file
+      description: Path al archivo YAML del ambiente
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:
+        generateName: "{{ .Release.Name }}-run"
+      spec:
+        pipelineRef:
+          name: {{ .Release.Name }}
+        params:
+          - name: environment
+            value: $(tt.params.environment)
+          - name: yaml-file
+            value: "path/to/$(tt.params.environment)-values.yaml"

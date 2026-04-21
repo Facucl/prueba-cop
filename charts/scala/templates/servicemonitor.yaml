@@ -1,0 +1,20 @@
+{{ if .Values.api.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Values.global.projectName }}-monitor
+  namespace: {{ .Values.global.namespace }} 
+  labels:
+    app.kubernetes.io/name: {{ .Values.global.projectName }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.global.projectName }}
+  endpoints:
+    {{- range .Values.api.serviceMonitor.selector }}
+    - port: {{ .port }}
+      honorLabels: {{ .honorLabels }}
+      interval: {{ .interval }}
+      path: {{ .path }}
+    {{- end }}
+{{ end }} 

@@ -1,0 +1,41 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: webhook-{{ .Release.Name }}
+spec:
+  triggers:
+    - name: cel-trig-with-matches
+      interceptors:
+        - params:	
+            - name: filter	
+              value: ''	
+            - name: overlays	
+              value:	
+                - expression: body.tag_name	
+                  key: tag_name
+                - expression: body.build_context
+                  key: build_context  
+          ref:	
+            kind: ClusterInterceptor	
+            name: cel 
+      bindings:
+        - kind: TriggerBinding
+          name: git-repo-source-url
+          value: {{ .Values.project.repository_url }}
+        - kind: TriggerBinding
+          name: build-context
+          value: $(extensions.build_context)
+        - kind: TriggerBinding
+          name: node-version
+          value: {{ .Values.project.node_version | quote }}
+        - kind: TriggerBinding
+          name: bucket-name
+          value: {{ .Values.project.bucket_name }}
+        - kind: TriggerBinding
+          name: context
+          value: {{ .Values.project.context }}
+        - kind: TriggerBinding
+          name: tag-name
+          value: $(extensions.tag_name)
+      template:
+        ref: "{{ .Release.Name }}-trigger-template"

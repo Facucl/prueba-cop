@@ -1,0 +1,58 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: "{{ .Release.Name }}-trigger-template"
+spec:
+  params:
+    - name: tag-name 
+      description: The created tag
+    - name: git-repo-source-url 
+      description: The git repository url
+    - name: build-context
+      description: environments to build
+    - name: bucket-name
+      description: Bucket used to serve the application
+    - name: context
+      description: Context path where to expose the application
+    - name: node-version
+      description: Node version used to build the application
+          
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1beta1
+      kind: PipelineRun
+      metadata:    
+        generateName: "{{ .Release.Name }}-run"
+      spec:
+        serviceAccountName: tekton-build 
+        pipelineRef:
+          name: {{ .Release.Name }}
+        workspaces:
+        - name: git-basic-auth
+          secret:
+            secretName: git-basic-auth-secret
+        - name: aws-credentials
+          secret:
+            secretName: aws-creds
+        - name: source-dir
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+              - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 2Gi        
+        params:
+        - name: git-repo-source-url
+          value: $(tt.params.git-repo-source-url)
+        - name: git-repo-source-revision
+          value: $(tt.params.tag-name)
+        - name: tag-name
+          value: $(tt.params.tag-name)
+        - name: build-context
+          value: $(tt.params.build-context)
+        - name: context
+          value: $(tt.params.context)
+        - name: node-version
+          value: $(tt.params.node-version)
+        - name: bucket-name
+          value: $(tt.params.bucket-name)

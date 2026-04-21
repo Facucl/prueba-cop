@@ -1,0 +1,33 @@
+{{- if and (eq (.Values.api.enabled | toString) "true" ) (eq (.Values.api.service.enabled | toString) "true") }}
+{{- $serviceName := .Values.api.service.name | default .Values.global.projectName -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $serviceName }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app.kubernetes.io/name: {{ .Values.global.projectName }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion }}
+spec:
+  {{- if .Values.api.service.headless }}
+  clusterIP: None
+  {{- else }}
+  type: {{ .Values.api.service.type | default "ClusterIP" }}
+  {{- end }}
+  ports:
+    - name: valkey
+      port: {{ .Values.api.service.port }}
+      targetPort: {{ .Values.api.service.targetPort }}
+      protocol: TCP
+      {{- if and (not .Values.api.service.headless) (eq .Values.api.service.type "NodePort") }}
+      nodePort: {{ .Values.api.service.nodePort }}
+      {{- end }}   
+  selector:
+    app.kubernetes.io/name: {{ .Values.global.projectName }}-app
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/component: app
+{{- end }}

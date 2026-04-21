@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Sellos/fe-declaraciones-autoliquidacion
+  bucket_name: fe-declaraciones-autoliquidacion
+  context: declaraciones-autoliquidacion

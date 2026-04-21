@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/desarrollo-cba/FrontDecidir2
+  bucket_name: fe-decidir2
+  context: fe-decidir2

@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/bot_asistente_virtual/front_agent_core.git
+  bucket_name: fe-bot-web
+  context: fe-bot-web

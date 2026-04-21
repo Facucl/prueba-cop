@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Architecture/fe-assets.git
+  bucket_name: fe-assets
+  context: assets

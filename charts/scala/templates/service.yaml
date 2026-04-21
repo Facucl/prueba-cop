@@ -1,0 +1,60 @@
+{{- if .Values.api.service.enabled -}}
+{{- $serviceName := .Values.api.service.name | default .Values.global.projectName -}}
+{{- range $key, $val := .Values.api.service.serviceName -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $val.name }}
+  namespace: {{ $.Values.global.namespace }}
+  {{- if not $val.labels }}
+  labels:
+    helm.sh/chart: {{ $.Chart.Name }}-{{ $.Chart.Version }}
+      {{- if $.Values.api.extraLabels }}
+        {{- with $.Values.api.extraLabels }}
+          {{- toYaml . | nindent 4 }}
+        {{- end }}
+        {{- else }}
+    app.kubernetes.io/name: {{ $.Values.global.projectName }}-app
+      {{- end }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/version: {{ $.Chart.AppVersion }}
+  {{- end }}
+spec:
+    {{- if $val.type }}
+    type: {{ $val.type }}
+    {{- end }}        
+    ports:    
+    {{- range $val.ports }} 
+     - port: {{ .port }}
+       protocol: TCP
+       targetPort: {{ .targetPort }}
+    {{- if .portName }}
+       name: {{ .portName }}
+    {{- end }}
+    {{- end }}
+
+    selector:
+    {{- if $val.selector}}
+        {{- with $val.selector }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+    {{- else }}
+      {{- if $.Values.api.extraLabels }}
+        {{- with $.Values.api.extraLabels }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/managed-by: {{ $.Release.Service }}
+        app.kubernetes.io/component: app
+    {{- end }}
+    {{- if $val.clusterIP }}
+    clusterIP: None
+     {{- end }}  
+    {{- if $val.publishNotReadyAddresses }}
+    publishNotReadyAddresses: {{ $val.publishNotReadyAddresses }}
+    {{- end }}    
+---
+{{- end -}}
+{{- end -}}

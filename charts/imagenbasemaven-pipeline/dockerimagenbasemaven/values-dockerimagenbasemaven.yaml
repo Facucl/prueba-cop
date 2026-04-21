@@ -1,0 +1,3 @@
+project:
+  git_group_url: https://git.rentasweb.gob.ar/DevOps
+  ecr_registry: registry-sip.cba.gov.ar:5000

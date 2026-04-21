@@ -1,0 +1,7 @@
+apiVersion: v2
+appVersion: latest
+description: Java Helm Chart
+name: javasecops
+version: 0.0.1
+keywords:
+  - javasecops

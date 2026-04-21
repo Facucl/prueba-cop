@@ -1,0 +1,121 @@
+global:
+  enabled: true
+  projectName: "backweb3js"
+
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/billetera-web3js"
+    tag: release-1.0.14
+    pullPolicy: IfNotPresent
+
+  namespace: web3js-desa
+  clusterName: desa-rentas
+
+  dnsPolicy: "None"
+  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+
+
+node:
+
+  global:
+    enabled: true
+
+  api:
+    enabled: true
+
+    replicaCount: 1
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+
+    hostAliases:
+      - ip: "10.250.72.53"
+        hostnames:
+          - "peer0-billetera-digital-desa.test.cba.gov.ar"
+      - ip: "10.250.72.54"
+        hostnames:
+          - "peer1-billetera-digital-desa.test.cba.gov.ar"
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1000Mi
+      limits:
+        cpu: 1000m
+        memory: 2048Mi
+
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      runAsGroup: 0
+      scc:
+        enabled: true
+        rootUser: true
+
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: desa
+      - name: PROXY_URL
+        value: http://proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: '8080'
+      - name: no_proxy
+        value: "localhost,127.0.0.1,.test.cba.gov.ar,.desa.cba.gov.ar,.rentasweb.gob.ar,.cba.gov.ar,.cba.gob.ar,.gobiernocba.gov.ar,.rentascordoba.gob.ar,10.42.,10.250.,lb-internal,.tempuri.org,.bancor.com.ar,.azure-api.net"
+      - name: PORT
+        value: 3003
+
+    envVars: {}
+    configMapVars: {}
+
+    livenessProbe:
+      enabled: true
+      path: /back-w3/api/v1/healthz
+      port: 3003
+      failureThreshold: 3
+      initialDelaySeconds: 80
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: true
+      path: /back-w3/api/v1/healthz
+      port: 3003
+      failureThreshold: 3
+      initialDelaySeconds: 80
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts:
+      - mountPath: /app/.env
+        name: envs-desa
+        subPath: .env
+        readOnly: true
+
+    extraVolumes:
+      - name: envs-desa
+        type: configMap
+        configMapName: envs-desa
+        defaultMode: 420
+
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations:
+        haproxy.router.openshift.io/timeout: "100s"
+      hosts:
+        - host: billetera-web3js.apps.apps.desa-rentas.gobiernocba.gov.ar
+          paths:
+            - path: /back-w3/api/
+              pathType: Prefix
+
+    service:
+      port: 80
+      targetPort: 3003

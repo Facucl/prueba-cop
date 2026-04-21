@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/aysgestiones/aysgestiones-core.git
+  ecr_registry: docker.io
+  ecr_repository: rentascbait/aysgestiones-core

@@ -1,0 +1,125 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "backendmultiplug"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/backendmultiplug"
+    tag: release-0.0.44
+    pullPolicy: IfNotPresent
+
+  # Namespace where release will be deployed
+  namespace: backendmultiplug-prod
+  clusterName: prod-backendmultiplug
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "None"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+
+netcore:
+
+  api:
+    resources: 
+      requests:
+        cpu: 500m
+        memory: 3072Mi
+      limits:
+        cpu: 1000m
+        memory: 3072Mi
+
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "java -jar server.jar"
+
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicaCount: 2
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      runAsUser: 0
+      runAsGroup: 0
+      scc:
+        enabled : true
+        rootUser: true
+
+    env: 
+      - name: RUNTIME_ENVIRONMENT
+        value: PROD
+      - name: HTTP_PROXY
+        value: "http://proxysrv.gobiernocba.gov.ar:8080"
+      - name: HTTPS_PROXY
+        value: "http://proxysrv.gobiernocba.gov.ar:8080"
+      - name: NO_PROXY
+        value: "localhost,127.0.0.1,.svc,.cluster.local,.svc.cluster.local,*.test.cba.gov.ar,*.rentasweb.gob.ar,*.cba.gov.ar,*.cba.gob.ar,*.gobiernocba.gov.ar,*.rentascordoba.gob.ar,10.42.0.0/16,10.250.0.0/16,lb-internal"
+      - name: AWS_HTTP_PROXY
+        value: "http://proxysrv.gobiernocba.gov.ar:8080"
+      - name: AWS_HTTPS_PROXY
+        value: "http://proxysrv.gobiernocba.gov.ar:8080"
+      - name: PERM_SIZE
+        value: 256m
+      - name: MAX_PERM_SIZE
+        value: 256m
+      - name: XMS
+        value: 3072m
+      - name: XMX
+        value: 3072m
+      - name: PORT
+        value: 5571
+      - name: ASPNETCORE_URLS
+        value: http://*:8080
+
+    envVars:
+      secretVars:
+        - name: multiplug-db
+        - name: dbcredentials-backendmultiplug-prod
+        - name: awscredentials-backendmultiplug-prod
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: true
+      path: /backendmultiplug/healthz
+      port: 8080
+      failureThreshold: 3
+      initialDelaySeconds: 80
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    readinessProbe:
+      enabled: true
+      path: /backendmultiplug/healthz
+      port: 8080
+      failureThreshold: 3
+      initialDelaySeconds: 80
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts: {}
+    extraVolumes: {}
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations:
+          haproxy.router.openshift.io/timeout: "90s" 
+      hosts: 
+        - host: multiplug.apps.apps.prod-rentas-os.gobiernocba.gov.ar
+          paths:
+            - path: /backendmultiplug/
+              pathType: Prefix
+
+    service:
+        port: 80
+        targetPort: 8080

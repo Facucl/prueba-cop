@@ -1,0 +1,111 @@
+global:
+  # enabled is the master enabled switch. Setting this to true or false
+  # will enable or disable all the components within this chart by default.
+  enabled: true
+  # Used to define custom react.fullname in template.
+  projectName: "front-demo-cop"
+  # image sets the repo,tag and pullPolicy of the project
+  image:
+    repository: "registro.kolektor.com.ar:5000/demo-fe-cop"
+    tag: release-0.0.1
+    pullPolicy: Always
+
+  # Namespace where release will be deployed
+  namespace: demo-fe-cop-prod
+  clusterName: prod-demo-fe-cop
+
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-s-dns-policy
+  dnsPolicy: "None"
+  # https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#pod-dns-config
+  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+node:
+  api:
+    resources: 
+      requests:
+        cpu: 100m
+        memory: 600Mi
+      limits:
+        cpu: 250m
+        memory: 1G
+    # commandArgs custom command argument on deployment pod template
+    # commandArgs: "nodejs -jar server.jar"
+    
+    nodeSelector: |
+      node-role.kubernetes.io/cop: ""
+   
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 2
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+      
+    tolerations: |
+      - key: "node-role.kubernetes.io/worker"
+        operator: "Exists"
+        value: ""
+
+    securityContext:
+      enabled: false
+      runAsUser: 1000
+      runAsGroup: 1000
+      scc:
+        enabled : false
+        rootUser: false
+    envVars:
+      secretVars:
+        - name: demofe-secret
+      configMapVars: {}
+
+    livenessProbe:
+      enabled: false
+      path: /
+      port: 
+      failureThreshold: 30
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 1
+
+    readinessProbe:
+      enabled: false
+      path: /
+      port: 3000
+      failureThreshold: 3
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+
+    volumeMounts: 
+      - mountPath: /var/www/env-config.js
+        name: env-config
+        subPath: env-config.js
+
+    extraVolumes:
+      - name: env-config
+        type: secret
+        secretName: demofe-secret
+        items:
+          - key: env-config.js
+            path: env-config.js
+
+
+    ## Allowing use of ingress controllers
+    ingress:
+      enabled: true
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: 
+        - host: "demo-fe-cop.apps.apps.prod-rentas.gobiernocba.gov.ar"
+          paths:
+            - path: /
+              pathType: Prefix
+    service:
+      port: 80
+      targetPort: 80
+

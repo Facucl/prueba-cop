@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/InteligenciaFiscal/automations/determinacion-de-oficio/fe-dof
+  bucket_name: fe-dof
+  context: dof

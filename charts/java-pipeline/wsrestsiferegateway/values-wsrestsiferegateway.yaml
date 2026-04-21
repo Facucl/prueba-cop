@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/Pagos/wsrestsiferegateway.git
+  ecr_registry: registry-sip.cba.gov.ar:5000
+  ecr_repository: wsrestsiferegateway

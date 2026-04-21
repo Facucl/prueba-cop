@@ -1,0 +1,6 @@
+project:
+  tag: release-0.0.171              # El tag que dispara el pipeline
+  RUNTIME_ENVIRONMENT: desa         # Entorno de ejecución
+  bucket_name: fe-sellos-rentas     # Nombre del bucket (este valor se toma del archivo values)
+  context: sellos                   # Contexto del build
+  repository_url: https://git.rentasweb.gob.ar/DevOps/kolektor-sellos.git

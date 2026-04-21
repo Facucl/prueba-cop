@@ -1,0 +1,8 @@
+apiVersion: v2
+name: wsrest-masterplan-transicion-estados
+version: 0.0.1
+dependencies:
+- name: nodeeks
+  version: 0.0.1
+  # repository: "http://--/"
+  repository: "file://../nodeeks"

@@ -1,0 +1,4 @@
+project:
+  repository_url: https://git.rentasweb.gob.ar/POCs-FE/fe-shell.git
+  bucket_name: fe-shellmicrofontends
+  context: shell-microfont

@@ -1,0 +1,118 @@
+global:
+  enabled: true
+  projectName: s3-glpi-uploader
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/glpi-s3-uploader
+    tag: release-0.0.13
+    pullPolicy: IfNotPresent
+  namespace: glpi-s3-uploader-test
+  clusterName: eks-test-rentas
+  dnsPolicy: "ClusterFirst"
+ingress: {}
+pythoneks:
+  api:
+    enabled: true
+    resources:
+
+      limits:
+        cpu: 1000m
+        memory: 1100Mi
+    terminationGracePeriodSeconds: 1
+    revisionHistoryLimit: 2
+    replicas: 1
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: TEST
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: '8080'
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "3000"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+    livenessProbe:
+      enabled: false
+      path: /
+      port: 3000
+      scheme: HTTP
+      failureThreshold: 3
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+    readinessProbe:
+      enabled: false
+      path: /
+      port: 3000
+      scheme: HTTP
+      failureThreshold: 3
+      initialDelaySeconds: 30
+      successThreshold: 1
+      periodSeconds: 30
+      timeoutSeconds: 10
+  # Config Volumen
+  volumeMounts:
+    - name: glpi-s3-config
+      mountPath: /app/config.properties
+      subPath: config.properties
+  #extraVolumes: {}
+  ingress:
+    enabled: false
+    className: "alb"
+    name: "ingress-sip-test"
+    labels: {}
+    annotations:
+      kubernetes.io/ingress.class: "alb"
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-test
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: '443'
+      alb.ingress.kubernetes.io/group.name: alb-eks-test
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      alb.ingress.kubernetes.io/enable-cors: "true"
+      alb.ingress.kubernetes.io/cors-allow-origin: "https://test.rentascordoba.gob.ar"
+      alb.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      alb.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      alb.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal-desa.rentascordoba.gob.ar
+        paths:
+          - path: /wsrest-masterplan-config
+            pathType: Prefix
+            backend:
+              service: 
+                name: wsrest-masterplan-config-service
+                port:
+                  number: 80
+      - host: backend-cloud-desa.rentascordoba.gob.ar
+        paths:
+          - path: /wsrest-masterplan-config
+            pathType: Prefix
+            backend:
+              service: 
+                name: wsrest-masterplan-config-service
+                port:
+                  number: 80
+
+  service:
+    enabled: true
+    name: service
+    type: ClusterIP
+    port: 80
+    targetPort: 3000
+    labels:
+      environment: test

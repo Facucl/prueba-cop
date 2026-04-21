@@ -1,0 +1,201 @@
+global:
+  enabled: true
+  projectName: keycloak-eks-desa
+  image:
+    repository: 634937925704.dkr.ecr.us-west-2.amazonaws.com/keycloak-eks
+    tag: release-0.0.29
+    pullPolicy: IfNotPresent
+  namespace: keycloak-eks-desa
+  clusterName: eks-desa-rentas
+  dnsPolicy: "ClusterFirst"
+
+ingress: {}
+
+keycloakchart:
+  api:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1500m
+        memory: 3000Mi
+
+    terminationGracePeriodSeconds: 60
+    revisionHistoryLimit: 2
+    replicas: 2
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    env:
+      - name: RUNTIME_ENVIRONMENT
+        value: DESA
+      - name: PROXY_URL
+        value: proxysrv.gobiernocba.gov.ar
+      - name: PROXY_PORT
+        value: "8080"
+      - name: NON_PROXY_HOSTS
+        value: "localhost|127.0.0.1|*.test.cba.gov.ar|*.rentasweb.gob.ar|*.cba.gov.ar|*.cba.gob.ar|*.gobiernocba.gov.ar|*.rentascordoba.gob.ar|10.42.*|10.250.*|lb-internal"
+      - name: PORT
+        value: "8080"
+      - name: TZ
+        value: America/Argentina/Buenos_Aires
+        # KC ENVS DEFAULT
+      - name: KC_HOSTNAME
+        value: "https://backend-cloud-desa.rentascordoba.gob.ar/keycloak"
+      #      - name: KC_PROXY
+      #        value: edge
+      - name: KC_HTTP_ENABLED
+        value: "true"
+      - name: KC_HTTP_MANAGEMENT_HEALTH_ENABLED
+        value: "true"
+      - name: KC_HTTP_MANAGEMENT_ENABLED
+        value: "true"
+      - name: KC_HTTP_MANAGEMENT_SCHEME
+        value: "http"
+      - name: KC_HTTP_MANAGEMENT_HOST
+        value: "0.0.0.0" # <- clave: que escuche fuera de localhost
+      - name: KC_HTTP_MANAGEMENT_PORT
+        value: "9000" # default
+      - name: KC_PROXY_HEADERS
+        value: "xforwarded"
+      # CACHË CONFIG
+      - name: KC_CACHE
+        value: "ispn"
+      - name: KC_CACHE_STACK
+        value: "kubernetes"
+      - name: JAVA_OPTS_APPEND
+        value: "-Djgroups.dns.query=keycloak-headless.keycloak-eks-desa.svc.cluster.local"
+        # FIN ENVS DEFAULT
+      - name: KEYCLOAK_ADMIN
+        valueFrom:
+          secretKeyRef:
+            name: keycloak-envs-eks-desa
+            key: KEYCLOAK_ADMIN
+      - name: KEYCLOAK_ADMIN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: keycloak-envs-eks-desa
+            key: KEYCLOAK_ADMIN_PASSWORD
+      # - name: KC_DB_URL
+      #   valueFrom:
+      #     secretKeyRef:
+      #       name: keycloak-envs-eks-desa
+      #       key: KC_DB_URL
+      # - name: KC_DB_USERNAME
+      #   valueFrom:
+      #     secretKeyRef:
+      #       name: keycloak-envs-eks-desa
+      #       key: KC_DB_USERNAME
+      # - name: KC_DB_PASSWORD
+      #   valueFrom:
+      #     secretKeyRef:
+      #       name: keycloak-envs-eks-desa
+      #       key: KC_DB_PASSWORD
+      - name: KC_LOG_LEVEL
+        valueFrom:
+          secretKeyRef:
+            name: keycloak-envs-eks-desa
+            key: KC_LOG_LEVEL
+      - name: KC_LOG_CONSOLE_OUTPUT
+        valueFrom:
+          secretKeyRef:
+            name: keycloak-envs-eks-desa
+            key: KC_LOG_CONSOLE_OUTPUT
+      # - name: KC_DB_SCHEMA
+      #   valueFrom:
+      #     secretKeyRef:
+      #       name: keycloak-envs-eks-desa
+      #       key: KC_DB_SCHEMA
+
+  livenessProbe:
+    enabled: true
+    path: /keycloak/health/live
+    port: 9000
+    scheme: HTTP
+    failureThreshold: 3
+    initialDelaySeconds: 90
+    successThreshold: 1
+    periodSeconds: 20
+    timeoutSeconds: 5
+
+  readinessProbe:
+    enabled: true
+    path: /keycloak/health/ready
+    port: 9000
+    scheme: HTTP
+    failureThreshold: 6
+    initialDelaySeconds: 90
+    successThreshold: 1
+    periodSeconds: 10
+    timeoutSeconds: 5
+
+  volumeMounts: {}
+  extraVolumes: {}
+
+  ingress:
+    enabled: true
+    className: alb
+    name: ingress-sip-desa
+    labels: {}
+    annotations:
+      alb.ingress.kubernetes.io/load-balancer-name: alb-eks-desa
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-west-2:634937925704:certificate/71243b06-3752-4f0c-95bd-2ff81d1c5e1d
+      alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      alb.ingress.kubernetes.io/ssl-redirect: "443"
+      alb.ingress.kubernetes.io/group.name: alb-eks-desa
+      alb.ingress.kubernetes.io/group.order: "1"
+      alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=100
+      alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-west-2:634937925704:regional/webacl/Web_ACL_ALB_EKS/26ca6840-3acd-4ecc-939e-14767ee1bc5f
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+      nginx.ingress.kubernetes.io/cors-allow-origin: "https://desa.rentascordoba.gob.ar"
+      nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, DELETE, POST, OPTIONS"
+      nginx.ingress.kubernetes.io/cors-allow-headers: "Content-Type,X-Authorization,authorization,captcha,cuit,timestamp,X-Requested-With,url,evento,responsetype,cuitiniciador,cuittitular,usuariofront,sectorfront"
+      nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    hosts:
+      - host: backend-cloud-internal-desa.rentascordoba.gob.ar
+        paths:
+          - path: /keycloak
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak-eks-service
+                port:
+                  number: 80
+      - host: backend-cloud-desa.rentascordoba.gob.ar
+        paths:
+          - path: /keycloak
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak-eks-service
+                port:
+                  number: 80
+  # CONFIG CUSTOM SERVICES
+  service:
+    enabled: true
+    name: keycloak-eks-service
+    type: ClusterIP
+    port: 80
+    targetPort: 8080
+    labels:
+      environment: desa
+  # HEADLESS CACHE CONFIG
+  serviceHeadless:
+    enabled: true
+    name: keycloak-headless
+    type: ClusterIP
+    clusterIP: None
+    publishNotReadyAddresses: true
+    port: 7800
+    targetPort: 7800
+    labels:
+      environment: desa

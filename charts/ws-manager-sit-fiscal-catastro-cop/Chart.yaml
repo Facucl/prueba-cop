@@ -1,0 +1,13 @@
+apiVersion: v2
+name: ws-manager-sit-fiscal-catastro-cop
+version: 0.0.1
+Appversion: latest
+description: >
+    This Chart is to deploy ws-manager-sit-fiscal-catastro-cop proyect based on node Helm chart.
+keywords:
+  - node
+dependencies:
+- name: node
+  version: 0.0.1
+  # repository: "http://--/"
+  repository: "file://../node"

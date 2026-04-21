@@ -1,0 +1,95 @@
+global:
+  enabled: true
+  projectName: "valkey-rentas"
+
+  image:
+    repository: "registry-sip.cba.gov.ar:5000/valkey-rentas"
+    tag: release-1.0.2
+    pullPolicy: IfNotPresent
+
+  namespace: valkey-rentas-preprod
+  clusterName: preprod-rentas
+
+  dnsPolicy: "None"
+  dnsConfig: 'nameservers: ["10.250.1.50", "10.250.1.51"]'
+
+valkey:
+  api:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 4000m
+        memory: 512Mi
+
+    terminationGracePeriodSeconds: 30
+    revisionHistoryLimit: 2
+    replicaCount: 1
+
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 1
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 70
+
+    securityContext:
+      enabled: true
+      fsGroup: 0
+      scc:
+        enabled: true
+        rootUser: false
+
+    env: []
+
+    envVars:
+      secretVars: []
+      configMapVars: []
+
+    service:
+      enabled: true
+      name: valkey-rentas
+      headless: false
+      type: NodePort
+      port: 6398
+      targetPort: 6398
+      nodePort: 32714
+
+    livenessProbe:
+      enabled: true
+      port: 6398
+      failureThreshold: 3
+      initialDelaySeconds: 20
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 2
+
+    readinessProbe:
+      enabled: true
+      port: 6398
+      failureThreshold: 3
+      initialDelaySeconds: 10
+      successThreshold: 1
+      periodSeconds: 10
+      timeoutSeconds: 2
+
+    volumeMounts:
+      - mountPath: /etc/valkey/users.acl
+        name: valkey-rentas-acl
+        subPath: users.acl
+      - mountPath: /data
+        name: valkey-data
+
+    extraVolumes:
+      - name: valkey-rentas-acl
+        type: secret
+      - name: valkey-data
+        type: emptyDir
+
+    ingress:
+      enabled: false
+      className: ""
+      labels: {}
+      annotations: {}
+      hosts: []
