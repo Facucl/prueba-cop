@@ -1,0 +1,27 @@
+﻿STEP-CLONE
+
++ '[' true = true ']'
++ cp /workspace/basic-auth/.git-credentials /tekton/home/.git-credentials
++ cp /workspace/basic-auth/.gitconfig /tekton/home/.gitconfig
++ chmod 400 /tekton/home/.git-credentials
++ chmod 400 /tekton/home/.gitconfig
++ '[' false = true ']'
++ '[' false = true ']'
++ CHECKOUT_DIR=/workspace/output/
++ '[' true = true ']'
++ cleandir
++ '[' -d /workspace/output/ ']'
++ rm -rf /workspace/output//lost+found
++ rm -rf '/workspace/output//.[!.]*'
++ rm -rf '/workspace/output//..?*'
++ test -z ''
++ /ko-app/git-init -url=https://git.rentasweb.gob.ar/copernico/ws-copernico-suite-back.git -revision=release-1.0.43 -refspec= -path=/workspace/output/ -sslVerify=true -submodules=true -depth=1 -sparseCheckoutDirectories=
+{"level":"info","ts":1776868438.5100842,"caller":"git/git.go:178","msg":"Successfully cloned https://git.rentasweb.gob.ar/copernico/ws-copernico-suite-back.git @ 482cdadb4d3e6e2ff31501830977ffef7ed9ec8d (grafted, HEAD) in path /workspace/output/"}
+{"level":"info","ts":1776868438.6328492,"caller":"git/git.go:217","msg":"Successfully initialized and updated submodules in path /workspace/output/"}
++ cd /workspace/output/
+++ git rev-parse HEAD
++ RESULT_SHA=482cdadb4d3e6e2ff31501830977ffef7ed9ec8d
++ EXIT_CODE=0
++ '[' 0 '!=' 0 ']'
++ printf %s 482cdadb4d3e6e2ff31501830977ffef7ed9ec8d
++ printf %s https://git.rentasweb.gob.ar/copernico/ws-copernico-suite-back.git
