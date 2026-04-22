@@ -1,0 +1,39 @@
+﻿STEP-GIT
+
++ '[' true '=' true ]
++ cp /workspace/basic-auth/.git-credentials /root/.git-credentials
++ cp /workspace/basic-auth/.gitconfig /root/.gitconfig
++ chmod 400 /root/.git-credentials
++ chmod 400 /root/.gitconfig
++ '[' false '=' true ]
++ git config --global user.email tekton@kolektor.com.ar
++ git config --global user.name tekton
++ '[' '!' -z ' desa' ]
++ echo '[INFO] Automatic deploy to  desa started'
+[INFO] Automatic deploy to  desa started
++ git clone https://git.rentasweb.gob.ar/DevOps/helm-charts.git
+Cloning into 'helm-charts'...
++ cd helm-charts/charts/ws-copernico-suite-back-cop
++ echo desa
++ sed 's/ /|/g'
++ sed -e 's/^[ \t]*//'
++ ENVS=desa
++ ls
++ grep -E -e 'values-(desa).*\.yaml'
++ replace_tag values-desa.yaml
++ echo release-1.0.43
++ grep -Eq '_feature$'
++ sed -i 's/tag:.*/tag: release-1.0.43/g' values-desa.yaml
++ git add -A
++ git commit -m 'chore: pipeline update image tag to release-1.0.43'
+[master 71d5cafa8] chore: pipeline update image tag to release-1.0.43
+ 1 file changed, 1 insertion(+), 1 deletion(-)
++ git push origin master
+To https://git.rentasweb.gob.ar/DevOps/helm-charts.git
+   58ef9a2cb..71d5cafa8  master -> master
++ git rev-parse HEAD
++ tr -d '\n'
++ RESULT_SHA=71d5cafa8434a5952e20dd395ec7cf59fa8f641d
++ EXIT_CODE=0
++ '[' 0 '!=' 0 ]
++ echo -n 71d5cafa8434a5952e20dd395ec7cf59fa8f641d
