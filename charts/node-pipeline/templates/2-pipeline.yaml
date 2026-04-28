@@ -75,7 +75,7 @@ spec:
     - name: git-clone
       taskRef:
         name: tekton-git-clone
-        kind: ClusterTask    
+        kind: ClusterTask
       params:
         - name: url
           value: $(params.git-repo-source-url)
@@ -85,9 +85,37 @@ spec:
         - name: output
           workspace: source-dir
         - name: basic-auth
-          workspace: git-basic-auth  
+          workspace: git-basic-auth
 
-  
+  ###############
+  # CAPTURE COMMIT MESSAGE
+  ###############
+  # Corre inmediatamente tras git-clone para capturar el subject/body del commit
+  # mientras el workspace está garantizado fresco. El mensaje se emite como
+  # result y lo consume el finally notify-deploy — así no depende del estado
+  # de la PVC al final del pipeline.
+    - name: capture-commit
+      runAfter: ["git-clone"]
+      workspaces:
+        - name: source
+          workspace: source-dir
+      taskSpec:
+        workspaces:
+          - name: source
+        results:
+          - name: message
+            description: Subject + body del commit HEAD del repo clonado
+        steps:
+          - name: read
+            image: registry-sip.cba.gov.ar:5000/alpine-git:1.0.0
+            securityContext:
+              runAsUser: 0
+            script: |
+              #!/bin/sh
+              set -eu
+              GIT_DIR="$(workspaces.source.path)/.git"
+              git config --global --add safe.directory "$(workspaces.source.path)"
+              git --git-dir="$GIT_DIR" log -1 --format=%B | tee $(results.message.path)
 
   ###############
   # KANIKO BUILD
@@ -221,6 +249,5 @@ spec:
           value: $(params.deploy-to)
         - name: pipeline-status
           value: $(tasks.status)
-      workspaces:
-        - name: source
-          workspace: source-dir
+        - name: commit-message
+          value: $(tasks.capture-commit.results.message)

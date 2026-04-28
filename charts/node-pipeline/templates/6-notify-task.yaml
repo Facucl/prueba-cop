@@ -29,10 +29,17 @@ spec:
     - name: pipeline-status
       type: string
       description: Estado agregado del pipeline (Succeeded/Failed/Completed/None)
+    - name: commit-message
+      type: string
+      description: |
+        Subject + body del commit HEAD. Lo emite la task `capture-commit`
+        del pipeline como result y lo pasa el finally. El bot filtra por
+        contenido exacto de este mensaje.
+      default: ""
     - name: bot-image
       type: string
       description: Imagen del bot (incluye tag/digest)
-      default: registry-sip.cba.gov.ar:5000/deploy-notify-bot:latest
+      default: registry-sip.cba.gov.ar:5000/deploy-notify-bot:v1.0.0
     - name: argo-namespace
       type: string
       default: openshift-gitops
@@ -47,25 +54,7 @@ spec:
       type: string
       default: "15m"
 
-  workspaces:
-    - name: source
-      description: |
-        El workspace source-dir del pipeline, para leer el commit message desde
-        el repo ya clonado por git-clone.
-
   steps:
-    - name: read-commit-message
-      image: registry.access.redhat.com/ubi9/ubi-minimal:latest
-      workingDir: $(workspaces.source.path)
-      script: |
-        #!/usr/bin/env bash
-        set -eu
-        if [ -d .git ]; then
-          git log -1 --format=%B > /tekton/home/commit-message.txt
-        else
-          : > /tekton/home/commit-message.txt
-        fi
-
     - name: notify
       image: $(params.bot-image)
       env:
@@ -87,18 +76,24 @@ spec:
           value: "$(params.poll-interval)"
         - name: POLL_TIMEOUT
           value: "$(params.poll-timeout)"
-        - name: COMMIT_MESSAGE_FILE
-          value: /tekton/home/commit-message.txt
+        - name: COMMIT_MESSAGE
+          value: "$(params.commit-message)"
+        - name: KUBERNETES_SERVICE_HOST
+          value: kubernetes.default.svc
+        - name: KUBERNETES_SERVICE_PORT
+          value: "443"
+        - name: HTTP_PROXY
+          value: http://proxysrv.gobiernocba.gov.ar:8080
+        - name: HTTPS_PROXY
+          value: http://proxysrv.gobiernocba.gov.ar:8080
+        - name: NO_PROXY
+          value: .cba.gov.ar,.rentasweb.gob.ar,.svc,.cluster.local,localhost,127.0.0.1,172.30.0.1,kubernetes.default.svc
         - name: TEAMS_WEBHOOK_URL
           valueFrom:
             secretKeyRef:
               name: deploy-notify-bot-teams
               key: webhook-url
-      command: ["/bin/sh", "-c"]
-      args:
-        - |
-          export COMMIT_MESSAGE="$(cat "$COMMIT_MESSAGE_FILE" 2>/dev/null || true)"
-          exec /bot
+      command: ["/bot"]
       resources:
         requests:
           cpu: 50m
